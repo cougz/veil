@@ -1,0 +1,683 @@
+---
+import Layout from '../layouts/Layout.astro';
+import { APP_NAME, APP_DESCRIPTION, DOMAIN, MODE } from '../config';
+
+const db = Astro.locals.runtime.env.DB;
+const { results: aliases } = await db
+  .prepare('SELECT * FROM aliases ORDER BY last_seen DESC')
+  .all();
+
+const total   = aliases.length;
+const active  = aliases.filter((a: any) => a.status === 'active').length;
+const blocked = aliases.filter((a: any) => a.status === 'blocked').length;
+
+function formatDate(ms: number): string {
+  const date = new Date(ms);
+  const now = new Date();
+  const diff = now.getTime() - date.getTime();
+  const seconds = Math.floor(diff / 1000);
+  const minutes = Math.floor(seconds / 60);
+  const hours = Math.floor(minutes / 60);
+  const days = Math.floor(hours / 24);
+  
+  if (days > 30) {
+    return date.toLocaleDateString('en-US', { year: 'numeric', month: 'short', day: 'numeric' });
+  } else if (days > 0) {
+    return `${days}d ago`;
+  } else if (hours > 0) {
+    return `${hours}h ago`;
+  } else if (minutes > 0) {
+    return `${minutes}m ago`;
+  } else {
+    return 'Just now';
+  }
+}
+---
+
+<Layout>
+  <section class="hero">
+    <h1 class="hero-title">{APP_NAME}</h1>
+    <p class="hero-subtitle">{APP_DESCRIPTION}</p>
+    <div class="mode-badge" data-mode={MODE}>
+      {MODE === 'catchall' ? 'Catch-All Mode' : 'Specific Mode'}
+    </div>
+  </section>
+
+  <div class="stats-row">
+    <div class="stat-card">
+      <span class="stat-number">{total}</span>
+      <span class="stat-label">Total Aliases</span>
+    </div>
+    <div class="stat-card">
+      <span class="stat-number">{active}</span>
+      <span class="stat-label">Active</span>
+    </div>
+    <div class="stat-card">
+      <span class="stat-number">{blocked}</span>
+      <span class="stat-label">Blocked</span>
+    </div>
+  </div>
+
+  {MODE === 'specific' && (
+    <section class="add-section">
+      <div class="search-bar">
+        <svg class="search-icon" width="20" height="20" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+          <circle cx="11" cy="11" r="8" stroke="currentColor" stroke-width="2"/>
+          <path d="M21 21l-4.35-4.35" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+        </svg>
+        <input
+          type="text"
+          id="new-alias-input"
+          class="search-input"
+          placeholder={`e.g. netflix@${DOMAIN}`}
+          autocomplete="off"
+          spellcheck="false"
+        />
+        <button class="search-btn" id="add-alias-btn">
+          <span class="spinner" id="add-spinner"></span>
+          <span id="add-label">Add Alias</span>
+        </button>
+      </div>
+      <div class="error-banner" id="add-error"></div>
+    </section>
+  )}
+
+  <div class="options-row">
+    <span class="options-label">Filter:</span>
+    <div class="pills">
+      <button class="pill active" data-filter="all">All <span class="pill-count">{total}</span></button>
+      <button class="pill" data-filter="active">Active <span class="pill-count">{active}</span></button>
+      <button class="pill" data-filter="blocked">Blocked <span class="pill-count">{blocked}</span></button>
+    </div>
+  </div>
+
+  <section class="table-section">
+    <div class="table-wrapper">
+      <table class="alias-table" id="alias-table">
+        <thead>
+          <tr>
+            <th>Address</th>
+            <th>First Seen</th>
+            <th>Last Seen</th>
+            <th>Mails</th>
+            <th>Status</th>
+            <th>Actions</th>
+          </tr>
+        </thead>
+        <tbody id="alias-tbody">
+          {aliases.map((alias: any) => (
+            <tr data-address={alias.address} data-status={alias.status} class="alias-row">
+              <td class="alias-address">
+                <code>{alias.address}</code>
+              </td>
+              <td class="alias-date">{formatDate(alias.first_seen)}</td>
+              <td class="alias-date">{formatDate(alias.last_seen)}</td>
+              <td class="alias-count">{alias.mail_count}</td>
+              <td>
+                <span class={`badge ${alias.status === 'active' ? 'badge-active' : 'badge-blocked'}`}>
+                  {alias.status}
+                </span>
+              </td>
+              <td class="alias-actions">
+                <button class="btn-sm btn-toggle" data-address={alias.address} data-status={alias.status}>
+                  {alias.status === 'active' ? 'Disable' : 'Enable'}
+                </button>
+                <button class="btn-sm btn-delete btn-danger" data-address={alias.address}>
+                  Delete
+                </button>
+              </td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
+      {aliases.length === 0 && (
+        <div class="empty-state">
+          {MODE === 'catchall'
+            ? `No aliases yet. Send an email to any address @${DOMAIN} to get started.`
+            : 'No aliases yet. Add one above to get started.'}
+        </div>
+      )}
+    </div>
+  </section>
+</Layout>
+
+<style>
+  .hero {
+    text-align: center;
+    margin-bottom: 2.5rem;
+  }
+
+  .hero-title {
+    font-size: 3rem;
+    font-weight: 700;
+    background: linear-gradient(135deg, var(--text-primary) 0%, var(--accent) 100%);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+    margin-bottom: 0.75rem;
+  }
+
+  .hero-subtitle {
+    color: var(--text-muted);
+    font-size: 1.1rem;
+    max-width: 600px;
+    margin: 0 auto 1.25rem;
+    line-height: 1.5;
+  }
+
+  .mode-badge {
+    display: inline-flex;
+    align-items: center;
+    padding: 0.5rem 1rem;
+    border-radius: 50px;
+    font-size: 0.875rem;
+    font-weight: 500;
+    transition: all var(--transition);
+  }
+
+  .mode-badge[data-mode="catchall"] {
+    background: var(--accent);
+    color: white;
+  }
+
+  .mode-badge[data-mode="specific"] {
+    background: transparent;
+    border: 2px solid var(--accent);
+    color: var(--accent);
+  }
+
+  .stats-row {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 1rem;
+    margin-bottom: 2rem;
+  }
+
+  @media (max-width: 600px) {
+    .stats-row {
+      grid-template-columns: 1fr;
+    }
+  }
+
+  .stat-card {
+    background: var(--bg-secondary);
+    border: 1px solid var(--border-color);
+    border-radius: var(--radius-lg);
+    padding: 1.5rem;
+    text-align: center;
+    transition: all var(--transition);
+  }
+
+  .stat-card:hover {
+    border-color: var(--accent);
+    box-shadow: var(--shadow-accent);
+  }
+
+  .stat-number {
+    display: block;
+    font-size: 2.5rem;
+    font-weight: 700;
+    color: var(--text-primary);
+    margin-bottom: 0.25rem;
+  }
+
+  .stat-label {
+    color: var(--text-muted);
+    font-size: 0.875rem;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+  }
+
+  .add-section {
+    margin-bottom: 2rem;
+  }
+
+  .search-bar {
+    display: flex;
+    align-items: center;
+    background: var(--bg-secondary);
+    border: 1px solid var(--border-color);
+    border-radius: var(--radius-lg);
+    padding: 0.75rem 1rem;
+    gap: 0.75rem;
+    transition: all var(--transition);
+  }
+
+  .search-bar:focus-within {
+    border-color: var(--accent);
+    box-shadow: 0 0 0 3px color-mix(in srgb, var(--accent) 20%, transparent);
+  }
+
+  .search-icon {
+    color: var(--text-muted);
+    flex-shrink: 0;
+  }
+
+  .search-input {
+    flex: 1;
+    background: transparent;
+    border: none;
+    color: var(--text-primary);
+    font-size: 1rem;
+    width: 100%;
+  }
+
+  .search-input::placeholder {
+    color: var(--text-muted);
+  }
+
+  .search-btn {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    background: var(--accent);
+    color: white;
+    padding: 0.6rem 1.25rem;
+    border-radius: var(--radius-md);
+    font-size: 0.9rem;
+    font-weight: 500;
+    transition: all var(--transition);
+    white-space: nowrap;
+  }
+
+  .search-btn:hover:not(:disabled) {
+    background: var(--accent-light);
+    transform: translateY(-1px);
+  }
+
+  .search-btn:disabled {
+    opacity: 0.6;
+    cursor: not-allowed;
+  }
+
+  .spinner {
+    display: none;
+    width: 14px;
+    height: 14px;
+    border: 2px solid transparent;
+    border-top-color: white;
+    border-radius: 50%;
+    animation: spin 0.8s linear infinite;
+  }
+
+  @keyframes spin {
+    to { transform: rotate(360deg); }
+  }
+
+  .error-banner {
+    display: none;
+    margin-top: 0.75rem;
+    padding: 0.75rem 1rem;
+    background: color-mix(in srgb, #f87171 15%, var(--bg-secondary));
+    border: 1px solid color-mix(in srgb, #f87171 30%, var(--border-color));
+    border-radius: var(--radius-md);
+    color: #fca5a5;
+    font-size: 0.9rem;
+  }
+
+  .options-row {
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+    margin-bottom: 1.5rem;
+    flex-wrap: wrap;
+  }
+
+  .options-label {
+    color: var(--text-muted);
+    font-size: 0.875rem;
+    font-weight: 500;
+  }
+
+  .pills {
+    display: flex;
+    gap: 0.5rem;
+    flex-wrap: wrap;
+  }
+
+  .pill {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    background: transparent;
+    border: 1px solid var(--border-color);
+    color: var(--text-secondary);
+    padding: 0.5rem 1rem;
+    border-radius: 50px;
+    font-size: 0.875rem;
+    transition: all var(--transition);
+  }
+
+  .pill:hover {
+    border-color: var(--accent);
+    color: var(--accent);
+  }
+
+  .pill.active {
+    background: var(--accent);
+    border-color: var(--accent);
+    color: white;
+  }
+
+  .pill-count {
+    background: color-mix(in srgb, var(--text-primary) 20%, transparent);
+    padding: 0.125rem 0.5rem;
+    border-radius: 50px;
+    font-size: 0.75rem;
+    font-weight: 600;
+  }
+
+  .pill.active .pill-count {
+    background: color-mix(in srgb, white 20%, transparent);
+  }
+
+  .table-section {
+    margin-bottom: 2rem;
+  }
+
+  .table-wrapper {
+    background: var(--bg-secondary);
+    border: 1px solid var(--border-color);
+    border-radius: var(--radius-lg);
+    overflow: hidden;
+    overflow-x: auto;
+  }
+
+  .alias-table {
+    width: 100%;
+    border-collapse: collapse;
+    min-width: 700px;
+  }
+
+  .alias-table th {
+    background: var(--bg-tertiary);
+    color: var(--text-muted);
+    font-size: 0.75rem;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    padding: 1rem 1.25rem;
+    text-align: left;
+    border-bottom: 1px solid var(--border-color);
+  }
+
+  .alias-table td {
+    padding: 1rem 1.25rem;
+    border-bottom: 1px solid var(--border-color);
+    vertical-align: middle;
+  }
+
+  .alias-row {
+    transition: background var(--transition);
+  }
+
+  .alias-row:hover {
+    background: var(--bg-tertiary);
+  }
+
+  .alias-row:last-child td {
+    border-bottom: none;
+  }
+
+  .alias-address code {
+    color: var(--text-primary);
+    font-weight: 500;
+  }
+
+  .alias-date {
+    color: var(--text-muted);
+    font-size: 0.9rem;
+  }
+
+  .alias-count {
+    font-weight: 600;
+    color: var(--text-secondary);
+  }
+
+  .badge {
+    display: inline-flex;
+    align-items: center;
+    padding: 0.25rem 0.75rem;
+    border-radius: 50px;
+    font-size: 0.75rem;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+  }
+
+  .badge-active {
+    background: color-mix(in srgb, #22c55e 15%, transparent);
+    color: #4ade80;
+    border: 1px solid color-mix(in srgb, #22c55e 30%, transparent);
+  }
+
+  .badge-blocked {
+    background: color-mix(in srgb, #ef4444 15%, transparent);
+    color: #f87171;
+    border: 1px solid color-mix(in srgb, #ef4444 30%, transparent);
+  }
+
+  .alias-actions {
+    display: flex;
+    gap: 0.5rem;
+  }
+
+  .btn-sm {
+    background: transparent;
+    border: 1px solid var(--border-color);
+    color: var(--text-secondary);
+    padding: 0.4rem 0.75rem;
+    border-radius: var(--radius-sm);
+    font-size: 0.8rem;
+    font-weight: 500;
+    transition: all var(--transition);
+    white-space: nowrap;
+  }
+
+  .btn-sm:hover:not(:disabled) {
+    border-color: var(--accent);
+    color: var(--accent);
+  }
+
+  .btn-sm:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+  }
+
+  .btn-toggle:hover:not(:disabled) {
+    background: color-mix(in srgb, var(--accent) 10%, transparent);
+  }
+
+  .btn-danger:hover:not(:disabled) {
+    border-color: #ef4444;
+    color: #f87171;
+    background: color-mix(in srgb, #ef4444 10%, transparent);
+  }
+
+  .empty-state {
+    text-align: center;
+    padding: 3rem 1rem;
+    color: var(--text-muted);
+    font-size: 1rem;
+  }
+
+  @media (max-width: 768px) {
+    .hero-title {
+      font-size: 2rem;
+    }
+
+    .hero-subtitle {
+      font-size: 0.95rem;
+    }
+
+    .stat-number {
+      font-size: 2rem;
+    }
+
+    .search-bar {
+      flex-wrap: wrap;
+    }
+
+    .search-btn {
+      width: 100%;
+      justify-content: center;
+    }
+  }
+</style>
+
+<script define:vars={{ apiToken: Astro.locals.runtime.env.API_TOKEN, domain: DOMAIN, mode: MODE }}>
+  async function apiFetch(path, method = 'GET', body = null) {
+    const opts = {
+      method,
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${apiToken}`
+      }
+    };
+    if (body) opts.body = JSON.stringify(body);
+    const res = await fetch(path, opts);
+    return res;
+  }
+
+  document.querySelectorAll('.pill[data-filter]').forEach(pill => {
+    pill.addEventListener('click', () => {
+      document.querySelectorAll('.pill[data-filter]').forEach(p => p.classList.remove('active'));
+      pill.classList.add('active');
+      const filter = pill.dataset.filter;
+      document.querySelectorAll('.alias-row').forEach(row => {
+        if (filter === 'all' || row.dataset.status === filter) {
+          row.style.display = '';
+        } else {
+          row.style.display = 'none';
+        }
+      });
+    });
+  });
+
+  function attachToggleListeners() {
+    document.querySelectorAll('.btn-toggle').forEach(btn => {
+      btn.removeEventListener('click', handleToggle);
+      btn.addEventListener('click', handleToggle);
+    });
+  }
+
+  async function handleToggle(e) {
+    const btn = e.currentTarget;
+    const address = btn.dataset.address;
+    const currentStatus = btn.dataset.status;
+    const newStatus = currentStatus === 'active' ? 'blocked' : 'active';
+
+    btn.disabled = true;
+    btn.textContent = '...';
+
+    const res = await apiFetch(
+      `/api/aliases/${encodeURIComponent(address)}`,
+      'PATCH',
+      { status: newStatus }
+    );
+
+    if (res.ok) {
+      const row = document.querySelector(`tr[data-address="${address}"]`);
+      row.dataset.status = newStatus;
+      btn.dataset.status = newStatus;
+      btn.textContent = newStatus === 'active' ? 'Disable' : 'Enable';
+      const badge = row.querySelector('.badge');
+      badge.className = `badge ${newStatus === 'active' ? 'badge-active' : 'badge-blocked'}`;
+      badge.textContent = newStatus;
+    } else {
+      btn.textContent = currentStatus === 'active' ? 'Disable' : 'Enable';
+      alert('Failed to update alias.');
+    }
+    btn.disabled = false;
+  }
+
+  function attachDeleteListeners() {
+    document.querySelectorAll('.btn-delete').forEach(btn => {
+      btn.removeEventListener('click', handleDelete);
+      btn.addEventListener('click', handleDelete);
+    });
+  }
+
+  async function handleDelete(e) {
+    const btn = e.currentTarget;
+    const address = btn.dataset.address;
+    if (!confirm(`Delete ${address}? This cannot be undone.`)) return;
+
+    btn.disabled = true;
+    const res = await apiFetch(
+      `/api/aliases/${encodeURIComponent(address)}`,
+      'DELETE'
+    );
+
+    if (res.ok) {
+      document.querySelector(`tr[data-address="${address}"]`)?.remove();
+    } else {
+      alert('Failed to delete alias.');
+      btn.disabled = false;
+    }
+  }
+
+  attachToggleListeners();
+  attachDeleteListeners();
+
+  if (mode === 'specific') {
+    const input = document.getElementById('new-alias-input');
+    const btn = document.getElementById('add-alias-btn');
+    const errorEl = document.getElementById('add-error');
+    const spinner = document.getElementById('add-spinner');
+    const label = document.getElementById('add-label');
+
+    btn?.addEventListener('click', async () => {
+      const address = input.value.trim().toLowerCase();
+      errorEl.style.display = 'none';
+
+      if (!address) return;
+      if (!address.endsWith(`@${domain}`)) {
+        errorEl.textContent = `Address must end with @${domain}`;
+        errorEl.style.display = 'block';
+        return;
+      }
+
+      btn.disabled = true;
+      spinner.style.display = 'block';
+      label.textContent = 'Adding…';
+
+      const res = await apiFetch('/api/aliases', 'POST', { address });
+      const data = await res.json();
+
+      if (res.ok) {
+        input.value = '';
+        const tbody = document.getElementById('alias-tbody');
+        const now = new Date().toLocaleDateString();
+        tbody.insertAdjacentHTML('afterbegin', `
+          <tr data-address="${address}" data-status="active" class="alias-row">
+            <td class="alias-address"><code>${address}</code></td>
+            <td class="alias-date">${now}</td>
+            <td class="alias-date">${now}</td>
+            <td class="alias-count">0</td>
+            <td><span class="badge badge-active">active</span></td>
+            <td class="alias-actions">
+              <button class="btn-sm btn-toggle" data-address="${address}" data-status="active">Disable</button>
+              <button class="btn-sm btn-delete btn-danger" data-address="${address}">Delete</button>
+            </td>
+          </tr>
+        `);
+        attachToggleListeners();
+        attachDeleteListeners();
+      } else {
+        errorEl.textContent = data.error ?? 'Failed to add alias.';
+        errorEl.style.display = 'block';
+      }
+
+      btn.disabled = false;
+      spinner.style.display = 'none';
+      label.textContent = 'Add Alias';
+    });
+
+    input?.addEventListener('keypress', (e) => {
+      if (e.key === 'Enter') {
+        btn.click();
+      }
+    });
+  }
+</script>

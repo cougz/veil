@@ -1,0 +1,13 @@
+name = "veil-frontend"
+main = "./dist/_worker.js"
+compatibility_date = "2024-09-23"
+
+[[d1_databases]]
+binding = "DB"
+database_name = "veil-db"
+database_id = "REPLACE_WITH_YOUR_D1_ID"
+
+[vars]
+
+[build]
+command = "npm run build"
