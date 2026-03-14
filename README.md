@@ -1,11 +1,11 @@
 # Veil
 
-**Wildcard email aliasing on Cloudflare Workers. Forward, filter, and burn addresses — without exposing your inbox.**
+**Wildcard email aliasing on Cloudflare Workers. Forward, filter, and burn addresses without exposing your inbox.**
 
 Veil is a self-hosted, open-source email alias relay built entirely on Cloudflare's developer platform. It consists of two Cloudflare Workers deployed from a single GitHub monorepo via Workers Builds:
 
-1. **Email Worker** — receives all inbound mail via Cloudflare Email Routing, enforces alias rules against a D1 database, and forwards allowed mail to your real inbox.
-2. **Frontend Worker** — an Astro SSR application that serves the alias management dashboard and exposes a REST API for alias CRUD operations.
+1. **Email Worker**: receives all inbound mail via Cloudflare Email Routing, enforces alias rules against a D1 database, and forwards allowed mail to your real inbox.
+2. **Frontend Worker**: an Astro SSR application that serves the alias management dashboard and exposes a REST API for alias CRUD operations.
 
 ## Known Limitations
 
@@ -21,11 +21,11 @@ Veil is a self-hosted, open-source email alias relay built entirely on Cloudflar
 
 ## Setup
 
-### Step 1 — Fork this repository on GitHub
+### Step 1: Fork this repository on GitHub
 
 Click the Fork button in the top-right corner of this page.
 
-### Step 2 — Create the D1 database
+### Step 2: Create the D1 database
 
 Run locally (once):
 
@@ -39,7 +39,7 @@ Copy the `database_id` from the output. Open both:
 
 Replace `REPLACE_WITH_YOUR_D1_ID` with your actual ID, then commit and push the change to GitHub.
 
-### Step 3 — Apply the schema
+### Step 3: Apply the schema
 
 Run locally (once, from the repo root):
 
@@ -47,7 +47,7 @@ Run locally (once, from the repo root):
 wrangler d1 execute veil-db --file=./schema.sql
 ```
 
-### Step 4 — Connect Workers Builds in the Cloudflare dashboard
+### Step 4: Connect Workers Builds in the Cloudflare dashboard
 
 1. Go to **Workers & Pages → Create → Connect to Git**
 2. Connect your fork for the **Email Worker**:
@@ -60,7 +60,7 @@ wrangler d1 execute veil-db --file=./schema.sql
    - Deploy command: `wrangler deploy`
 4. Set the branch trigger to `main` for both.
 
-### Step 5 — Set deploy variables
+### Step 5: Set deploy variables
 
 In the Cloudflare dashboard, go to **Worker → Settings → Variables** for each Worker and set:
 
@@ -78,26 +78,26 @@ In the Cloudflare dashboard, go to **Worker → Settings → Variables** for eac
 |---|---|---|
 | `API_TOKEN` | ✅ | Static Bearer token for API auth |
 | `DOMAIN` | ✅ | The relay domain e.g. `yourdomain.com` |
-| `MODE` | ✅ | `catchall` or `specific` — mirrors Email Worker |
+| `MODE` | ✅ | `catchall` or `specific` (mirrors Email Worker) |
 | `APP_NAME` | ❌ | Defaults to `Veil` |
 | `APP_DESCRIPTION` | ❌ | Defaults to the tagline above |
 | `ACCENT_COLOR` | ❌ | Hex color, defaults to `#6d83f2` |
 
-### Step 6 — Bind D1 to both Workers
+### Step 6: Bind D1 to both Workers
 
 In the Cloudflare dashboard, go to **Worker → Settings → Bindings → D1 Database** for each Worker:
 
 - Binding name: `DB`
 - D1 Database: `veil-db`
 
-### Step 7 — Configure Email Routing
+### Step 7: Configure Email Routing
 
 1. Go to your domain → **Email → Email Routing**
 2. Add a **Catch-All** rule
 3. Action: Send to Worker
 4. Select: `veil-email-worker`
 
-### Step 8 — Generate your API token
+### Step 8: Generate your API token
 
 Run locally:
 
@@ -107,7 +107,7 @@ openssl rand -hex 32
 
 Set the output as `API_TOKEN` in the frontend Worker's variables.
 
-### Step 9 — Deploy
+### Step 9: Deploy
 
 Push any change to `main` to trigger your first Workers Builds deployment. Both Workers will build and deploy automatically on every subsequent push.
 
