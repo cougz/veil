@@ -29,7 +29,19 @@ Veil is a self-hosted, open-source email alias relay built entirely on Cloudflar
 - Workers Paid plan (for D1 + Email Workers)
 - `wrangler` CLI installed locally (`npm install -g wrangler`)
 
-## Setup
+## Local Development
+
+To run the frontend locally:
+
+```bash
+cd workers/frontend
+npm install
+npm run dev
+```
+
+To test the email worker locally, you'll need to use `wrangler dev` with email routing simulation. However, email workers are best tested in production since Cloudflare Email Routing cannot be fully simulated locally.
+
+## Production Deployment
 
 ### Step 1: Fork this repository on GitHub
 
@@ -57,26 +69,41 @@ Run locally (once, from the repo root):
 wrangler d1 execute veil-db --file=./schema.sql
 ```
 
-### Step 4: Connect Workers Builds in the Cloudflare dashboard
+### Step 4: Configure Workers Builds in the Cloudflare dashboard
+
+Workers Builds automatically deploys your workers when you push to GitHub. Configure each worker:
+
+**Email Worker** (`workers/email-worker`)
 
 1. Go to **Workers & Pages → Create → Connect to Git**
-2. Connect your fork for the **Email Worker**:
-   - Root directory: `workers/email-worker`
-   - Install command: `npm install`
-   - Build command: *(leave empty)*
-   - Deploy command: `wrangler deploy`
-   - Build watch paths → Include: `workers/email-worker/**`
-3. Connect your fork for the **Frontend Worker**:
-   - Root directory: `workers/frontend`
-   - Install command: `npm install`
-   - Build command: `npm run build`
-   - Deploy command: `wrangler deploy`
-   - Build watch paths → Include: `workers/frontend/**`
-4. Set the branch trigger to `main` for both.
+2. Select your fork and configure:
+   - **Root directory**: `workers/email-worker`
+   - **Install command**: `npm install`
+   - **Build command**: *(leave empty)*
+   - **Deploy command**: `wrangler deploy`
+   - **Branch trigger**: `main`
+3. Under **Settings → Build configurations**, add a build watch path:
+   - **Include**: `workers/email-worker/**`
 
-### Step 5: Set deploy variables
+This ensures the email worker only rebuilds when files in `workers/email-worker/` change.
 
-In the Cloudflare dashboard, go to **Worker → Settings → Variables** for each Worker and set:
+**Frontend Worker** (`workers/frontend`)
+
+1. Create another Workers Builds project for the same repo
+2. Configure:
+   - **Root directory**: `workers/frontend`
+   - **Install command**: `npm install`
+   - **Build command**: `npm run build`
+   - **Deploy command**: `wrangler deploy`
+   - **Branch trigger**: `main`
+3. Add a build watch path:
+   - **Include**: `workers/frontend/**`
+
+The frontend's `wrangler.toml` includes an `assets` directive that ensures static files (CSS, JS, fonts) are uploaded alongside the worker. This is critical — without it, the dashboard will load as a blank page.
+
+### Step 5: Set environment variables
+
+In the Cloudflare dashboard, go to **Worker → Settings → Variables and Secrets** for each Worker:
 
 **Email Worker Variables**
 
@@ -97,7 +124,7 @@ In the Cloudflare dashboard, go to **Worker → Settings → Variables** for eac
 | `APP_DESCRIPTION` | ❌ | Defaults to the tagline above |
 | `ACCENT_COLOR` | ❌ | Hex color, defaults to `#6d83f2` |
 
-### Step 6: Bind D1 to both Workers
+### Step 6: Bind D1 database to both Workers
 
 In the Cloudflare dashboard, go to **Worker → Settings → Bindings → D1 Database** for each Worker:
 
@@ -113,7 +140,22 @@ In the Cloudflare dashboard, go to **Worker → Settings → Bindings → D1 Dat
 
 ### Step 8: Deploy
 
-Push any change to `main` to trigger your first Workers Builds deployment. Both Workers will build and deploy automatically on every subsequent push.
+After completing Steps 4-7, trigger your first deployment:
+
+1. Go to each Worker in the dashboard
+2. Click **Deployments** → you should see a pending/running build
+3. Wait for both workers to deploy successfully
+4. Visit your frontend Worker's URL (found in the dashboard under **Preview** or **Triggers**)
+
+Both Workers will automatically rebuild and redeploy on every push to `main` — but only if files within their respective watch paths changed.
+
+### Step 9: Verify deployment
+
+1. Visit your frontend Worker URL — you should see the Veil login page
+2. Log in with your `API_TOKEN`
+3. Send a test email to `test@yourdomain.com`
+4. Check the dashboard to see the alias appear (in catchall mode)
+5. Verify the email was forwarded to your `FORWARD_TO` address
 
 ## Usage
 
