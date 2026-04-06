@@ -1,5 +1,5 @@
 import type { APIRoute } from 'astro';
-import { isAuthorized, unauthorized, json } from '../../lib/api';
+import { isAuthorized, unauthorized, json } from '../../../lib/api';
 
 export const GET: APIRoute = async ({ locals, request }) => {
   if (!isAuthorized(request, locals.runtime.env)) return unauthorized();
