@@ -7,6 +7,16 @@ Veil is a self-hosted, open-source email alias relay built entirely on Cloudflar
 1. **Email Worker**: receives all inbound mail via Cloudflare Email Routing, enforces alias rules against a D1 database, and forwards allowed mail to your real inbox.
 2. **Frontend Worker**: an Astro SSR application that serves the alias management dashboard and exposes a REST API for alias CRUD operations.
 
+## Features
+
+- **Session-based authentication** - Secure login with HttpOnly cookies (no tokens in browser)
+- **Two modes**: Catch-All (auto-create aliases) or Specific (whitelist only)
+- **Expiring aliases** - Set optional expiration dates for temporary addresses
+- **Rate limiting** - 100 emails/minute per sender to prevent abuse
+- **CSV export** - Download your alias list for backup
+- **Copy-to-clipboard** - Quick copy buttons for each alias
+- **Pagination** - Handles large alias lists efficiently
+
 ## Known Limitations
 
 > Veil uses Cloudflare's `message.forward()` API, which reforwards mail with automatic SRS (Sender Rewriting Scheme) applied to the envelope sender. It is not a transparent SMTP proxy. SPF and bounce handling are managed automatically by Cloudflare. DMARC strict-alignment failures may occur with some senders, which is a known limitation shared by all forwarding-based alias services (SimpleLogin, AnonAddy, etc.).
@@ -76,7 +86,7 @@ In the Cloudflare dashboard, go to **Worker → Settings → Variables** for eac
 
 | Variable | Required | Description |
 |---|---|---|
-| `API_TOKEN` | ✅ | Static Bearer token for API auth |
+| `API_TOKEN` | ✅ | Password for dashboard login (generate with `openssl rand -hex 32`) |
 | `DOMAIN` | ✅ | The relay domain e.g. `yourdomain.com` |
 | `MODE` | ✅ | `catchall` or `specific` (mirrors Email Worker) |
 | `APP_NAME` | ❌ | Defaults to `Veil` |
@@ -97,27 +107,21 @@ In the Cloudflare dashboard, go to **Worker → Settings → Bindings → D1 Dat
 3. Action: Send to Worker
 4. Select: `veil-email-worker`
 
-### Step 8: Generate your API token
-
-Run locally:
-
-```bash
-openssl rand -hex 32
-```
-
-Set the output as `API_TOKEN` in the frontend Worker's variables.
-
-### Step 9: Deploy
+### Step 8: Deploy
 
 Push any change to `main` to trigger your first Workers Builds deployment. Both Workers will build and deploy automatically on every subsequent push.
 
 ## Usage
 
 - Visit your frontend Worker's URL to access the dashboard
+- Log in using your `API_TOKEN` as the password
 - In **Specific mode**, add aliases manually before mail can flow through them
 - In **Catch-All mode**, aliases appear automatically as mail arrives
+- Set an **expiration date** when creating aliases for temporary addresses
+- Click the **copy button** to copy an alias to clipboard
 - Click **Disable** to stop forwarding from a specific alias (mail is rejected at the Worker level)
 - Click **Delete** to remove the record entirely
+- Use **Export CSV** to backup your alias list
 - Re-enable a disabled alias at any time with the **Enable** button
 
 ## Workers Builds Configuration Summary
