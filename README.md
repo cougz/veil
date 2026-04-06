@@ -107,28 +107,28 @@ Both workers have **Observability** enabled via `wrangler.toml`, which automatic
 
 In the Cloudflare dashboard, go to **Worker → Settings → Variables and Secrets** for each Worker.
 
-> **Important**: Variables set in the dashboard will persist across deployments. The `wrangler.toml` files intentionally omit the `[vars]` section to prevent dashboard values from being overwritten on deploy.
+> **Critical**: Set ALL variables as **Secret** type. Variables set as "Text" or "JSON" will be overwritten on each deployment from GitHub. Only **Secret** type values persist across deployments since they are encrypted and not included in `wrangler.toml`.
 
 **Email Worker Variables**
 
 | Variable | Type | Required | Description |
 |---|---|---|---|
-| `FORWARD_TO` | Text | ✅ | Destination email address e.g. `you@proton.me` |
-| `MODE` | Text | ✅ | `catchall` or `specific` |
-| `REJECT_MESSAGE` | Text | ✅ | SMTP rejection text e.g. `This address is no longer active` |
+| `FORWARD_TO` | **Secret** | ✅ | Destination email address e.g. `you@proton.me` |
+| `MODE` | **Secret** | ✅ | `catchall` or `specific` |
+| `REJECT_MESSAGE` | **Secret** | ✅ | SMTP rejection text e.g. `This address is no longer active` |
 
 **Frontend Worker Variables**
 
 | Variable | Type | Required | Description |
 |---|---|---|---|
 | `API_TOKEN` | **Secret** | ✅ | Password for dashboard login (generate with `openssl rand -hex 32`) |
-| `DOMAIN` | Text | ✅ | The relay domain e.g. `yourdomain.com` |
-| `MODE` | Text | ✅ | `catchall` or `specific` (mirrors Email Worker) |
-| `APP_NAME` | Text | ❌ | Defaults to `Veil` |
-| `APP_DESCRIPTION` | Text | ❌ | Defaults to the tagline above |
-| `ACCENT_COLOR` | Text | ❌ | Hex color, defaults to `#6d83f2` |
+| `DOMAIN` | **Secret** | ✅ | The relay domain e.g. `yourdomain.com` |
+| `MODE` | **Secret** | ✅ | `catchall` or `specific` (mirrors Email Worker) |
+| `APP_NAME` | **Secret** | ❌ | Defaults to `Veil` |
+| `APP_DESCRIPTION` | **Secret** | ❌ | Defaults to the tagline above |
+| `ACCENT_COLOR` | **Secret** | ❌ | Hex color, defaults to `#6d83f2` |
 
-> **Security note**: Always use **Secret** type for `API_TOKEN`. Never store passwords or tokens as plaintext.
+> **Note**: Even though some values (like `MODE` or `ACCENT_COLOR`) aren't sensitive, they must still be set as **Secret** to prevent them from being overwritten on each git push.
 
 ### Step 6: Bind D1 database to both Workers
 
