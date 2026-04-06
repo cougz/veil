@@ -24,32 +24,6 @@ function isRateLimited(key) {
   return false;
 }
 
-const rateLimitMap = new Map();
-const RATE_LIMIT_WINDOW = 60 * 1000;
-const RATE_LIMIT_MAX = 100;
-
-function isRateLimited(key) {
-  const now = Date.now();
-  const entry = rateLimitMap.get(key);
-  
-  if (!entry) {
-    rateLimitMap.set(key, { count: 1, windowStart: now });
-    return false;
-  }
-  
-  if (now - entry.windowStart > RATE_LIMIT_WINDOW) {
-    rateLimitMap.set(key, { count: 1, windowStart: now });
-    return false;
-  }
-  
-  if (entry.count >= RATE_LIMIT_MAX) {
-    return true;
-  }
-  
-  entry.count++;
-  return false;
-}
-
 export default {
   async email(message, env, ctx) {
     try {
