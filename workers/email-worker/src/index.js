@@ -34,19 +34,20 @@ export default {
       const rejectMessage = env.REJECT_MESSAGE ?? 'This address is no longer active';
 
       if (!forwardTo) {
-        console.error('FORWARD_TO environment variable is not set');
+        console.error('FORWARD_TO not set', { alias, from: message.from });
         message.setReject('Server misconfiguration: FORWARD_TO not set');
         return;
       }
 
       if (!env.DB) {
-        console.error('DB binding is not configured');
+        console.error('DB not bound', { alias, from: message.from });
         message.setReject('Server misconfiguration: database not bound');
         return;
       }
 
       const rateLimitKey = message.from ?? 'unknown';
       if (isRateLimited(rateLimitKey)) {
+        console.warn('Rate limited', { alias, from: message.from });
         message.setReject('Rate limit exceeded');
         return;
       }
@@ -57,17 +58,20 @@ export default {
         .first();
 
       if (row?.status === 'blocked') {
+        console.info('Blocked', { alias, from: message.from });
         message.setReject(rejectMessage);
         return;
       }
 
       if (row?.expires_at && row.expires_at < now) {
+        console.info('Expired', { alias, from: message.from, expiredAt: row.expires_at });
         message.setReject(rejectMessage);
         return;
       }
 
       if (!row) {
         if (mode === 'specific') {
+          console.info('Rejected (specific mode)', { alias, from: message.from });
           message.setReject(rejectMessage);
           return;
         }
@@ -78,6 +82,7 @@ export default {
           `)
           .bind(alias, now, now)
           .run();
+        console.info('Created alias', { alias, from: message.from });
       } else {
         await env.DB
           .prepare(`
@@ -87,11 +92,13 @@ export default {
           `)
           .bind(now, alias)
           .run();
+        console.info('Updated alias', { alias, from: message.from });
       }
 
       await message.forward(forwardTo);
+      console.info('Forwarded', { alias, from: message.from, to: forwardTo });
     } catch (error) {
-      console.error('Email worker error:', error);
+      console.error('Error', { error: error.message, stack: error.stack });
       message.setReject('Internal server error');
     }
   }
