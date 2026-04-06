@@ -48,16 +48,14 @@ export const PUT: APIRoute = async ({ locals, request }) => {
     const updates: { key: string; value: string }[] = [];
 
     if (typeof (body as any)?.forward_to === 'string') {
-      const value = (body as any).forward_to.trim();
-      if (value && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value)) {
-        console.log('[Settings API] Invalid email format:', value);
-        return json({ error: 'Invalid email address for forward_to' }, 400);
-      }
+      const value = (body as any).forward_to?.trim();
+      updates.push({ key: 'forward_to', value });
+    }
       updates.push({ key: 'forward_to', value });
     }
 
     if (typeof (body as any)?.reject_message === 'string') {
-      const value = (body as any).reject_message.trim();
+      const value = (body as any).reject_message?.trim();
       updates.push({ key: 'reject_message', value });
     }
 
