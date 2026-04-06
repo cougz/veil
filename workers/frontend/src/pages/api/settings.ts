@@ -47,13 +47,15 @@ export const PUT: APIRoute = async ({ locals, request }) => {
 
     const updates: { key: string; value: string }[] = [];
 
-    if (typeof (body as any)?.forward_to === 'string') {
-      const value = (body as any).forward_to?.trim();
+    const bodyAny = body as any;
+    
+    if (typeof bodyAny.forward_to === 'string') {
+      const value = bodyAny.forward_to.trim();
       updates.push({ key: 'forward_to', value });
     }
 
-    if (typeof (body as any)?.reject_message === 'string') {
-      const value = (body as any).reject_message?.trim();
+    if (typeof bodyAny.reject_message === 'string') {
+      const value = bodyAny.reject_message.trim();
       updates.push({ key: 'reject_message', value });
     }
 
