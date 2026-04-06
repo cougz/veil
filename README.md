@@ -101,28 +101,34 @@ This ensures the email worker only rebuilds when files in `workers/email-worker/
 
 The frontend's `wrangler.toml` includes an `assets` directive that ensures static files (CSS, JS, fonts) are uploaded alongside the worker. This is critical — without it, the dashboard will load as a blank page.
 
+Both workers have **Observability** enabled via `wrangler.toml`, which automatically collects logs, errors, and invocation data. You can view logs in the dashboard under **Worker → Observability**.
+
 ### Step 5: Set environment variables
 
-In the Cloudflare dashboard, go to **Worker → Settings → Variables and Secrets** for each Worker:
+In the Cloudflare dashboard, go to **Worker → Settings → Variables and Secrets** for each Worker.
+
+> **Important**: Variables set in the dashboard will persist across deployments. The `wrangler.toml` files intentionally omit the `[vars]` section to prevent dashboard values from being overwritten on deploy.
 
 **Email Worker Variables**
 
-| Variable | Required | Description |
-|---|---|---|
-| `FORWARD_TO` | ✅ | Destination email address e.g. `you@proton.me` |
-| `MODE` | ✅ | `catchall` or `specific` |
-| `REJECT_MESSAGE` | ✅ | SMTP rejection text e.g. `This address is no longer active` |
+| Variable | Type | Required | Description |
+|---|---|---|---|
+| `FORWARD_TO` | Text | ✅ | Destination email address e.g. `you@proton.me` |
+| `MODE` | Text | ✅ | `catchall` or `specific` |
+| `REJECT_MESSAGE` | Text | ✅ | SMTP rejection text e.g. `This address is no longer active` |
 
 **Frontend Worker Variables**
 
-| Variable | Required | Description |
-|---|---|---|
-| `API_TOKEN` | ✅ | Password for dashboard login (generate with `openssl rand -hex 32`) |
-| `DOMAIN` | ✅ | The relay domain e.g. `yourdomain.com` |
-| `MODE` | ✅ | `catchall` or `specific` (mirrors Email Worker) |
-| `APP_NAME` | ❌ | Defaults to `Veil` |
-| `APP_DESCRIPTION` | ❌ | Defaults to the tagline above |
-| `ACCENT_COLOR` | ❌ | Hex color, defaults to `#6d83f2` |
+| Variable | Type | Required | Description |
+|---|---|---|---|
+| `API_TOKEN` | **Secret** | ✅ | Password for dashboard login (generate with `openssl rand -hex 32`) |
+| `DOMAIN` | Text | ✅ | The relay domain e.g. `yourdomain.com` |
+| `MODE` | Text | ✅ | `catchall` or `specific` (mirrors Email Worker) |
+| `APP_NAME` | Text | ❌ | Defaults to `Veil` |
+| `APP_DESCRIPTION` | Text | ❌ | Defaults to the tagline above |
+| `ACCENT_COLOR` | Text | ❌ | Hex color, defaults to `#6d83f2` |
+
+> **Security note**: Always use **Secret** type for `API_TOKEN`. Never store passwords or tokens as plaintext.
 
 ### Step 6: Bind D1 database to both Workers
 
