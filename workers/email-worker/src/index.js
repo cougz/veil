@@ -24,15 +24,6 @@ function isRateLimited(key) {
   return false;
 }
 
-setInterval(() => {
-  const now = Date.now();
-  for (const [key, entry] of rateLimitMap) {
-    if (now - entry.windowStart > RATE_LIMIT_WINDOW) {
-      rateLimitMap.delete(key);
-    }
-  }
-}, 60 * 1000);
-
 export default {
   async email(message, env, ctx) {
     const alias = message.to.toLowerCase().trim();
