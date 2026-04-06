@@ -18,7 +18,7 @@ export const PATCH: APIRoute = async ({ locals, request, params }) => {
     .bind(status, address)
     .run();
 
-  if ((result.meta as any).changes === 0) return json({ error: 'Alias not found' }, 404);
+  if (result.meta.changes === 0) return json({ error: 'Alias not found' }, 404);
   return json({ success: true, address, status });
 };
 
@@ -32,6 +32,6 @@ export const DELETE: APIRoute = async ({ locals, request, params }) => {
     .bind(address)
     .run();
 
-  if ((result.meta as any).changes === 0) return json({ error: 'Alias not found' }, 404);
+  if (result.meta.changes === 0) return json({ error: 'Alias not found' }, 404);
   return json({ success: true });
 };

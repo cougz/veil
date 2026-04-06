@@ -1,37 +1,41 @@
 ---
 import Layout from '../layouts/Layout.astro';
 import { APP_NAME, APP_DESCRIPTION, DOMAIN, MODE } from '../config';
+import { isAuthenticated, clearSessionCookie } from '../lib/auth';
+import { formatDate } from '../lib/dates';
+
+if (!isAuthenticated(Astro.request, Astro.locals.runtime.env)) {
+  return Astro.redirect('/login', 302);
+}
 
 const db = Astro.locals.runtime.env.DB;
+const page = 1;
+const limit = 100;
+const offset = (page - 1) * limit;
+
 const { results: aliases } = await db
-  .prepare('SELECT * FROM aliases ORDER BY last_seen DESC')
+  .prepare('SELECT * FROM aliases ORDER BY last_seen DESC LIMIT ? OFFSET ?')
+  .bind(limit, offset)
   .all();
 
-const total   = aliases.length;
-const active  = aliases.filter((a: any) => a.status === 'active').length;
-const blocked = aliases.filter((a: any) => a.status === 'blocked').length;
+const countResult = await db
+  .prepare('SELECT COUNT(*) as total FROM aliases')
+  .first();
+const totalCount = (countResult as any)?.total ?? 0;
 
-function formatDate(ms: number): string {
-  const date = new Date(ms);
-  const now = new Date();
-  const diff = now.getTime() - date.getTime();
-  const seconds = Math.floor(diff / 1000);
-  const minutes = Math.floor(seconds / 60);
-  const hours = Math.floor(minutes / 60);
-  const days = Math.floor(hours / 24);
-  
-  if (days > 30) {
-    return date.toLocaleDateString('en-US', { year: 'numeric', month: 'short', day: 'numeric' });
-  } else if (days > 0) {
-    return `${days}d ago`;
-  } else if (hours > 0) {
-    return `${hours}h ago`;
-  } else if (minutes > 0) {
-    return `${minutes}m ago`;
-  } else {
-    return 'Just now';
-  }
-}
+const activeResult = await db
+  .prepare('SELECT COUNT(*) as count FROM aliases WHERE status = ?')
+  .bind('active')
+  .first();
+const activeCount = (activeResult as any)?.count ?? 0;
+
+const blockedResult = await db
+  .prepare('SELECT COUNT(*) as count FROM aliases WHERE status = ?')
+  .bind('blocked')
+  .first();
+const blockedCount = (blockedResult as any)?.count ?? 0;
+
+const hasMore = aliases.length === limit;
 ---
 
 <Layout>
@@ -45,49 +49,68 @@ function formatDate(ms: number): string {
 
   <div class="stats-row">
     <div class="stat-card">
-      <span class="stat-number">{total}</span>
+      <span class="stat-number">{totalCount}</span>
       <span class="stat-label">Total Aliases</span>
     </div>
     <div class="stat-card">
-      <span class="stat-number">{active}</span>
+      <span class="stat-number">{activeCount}</span>
       <span class="stat-label">Active</span>
     </div>
     <div class="stat-card">
-      <span class="stat-number">{blocked}</span>
+      <span class="stat-number">{blockedCount}</span>
       <span class="stat-label">Blocked</span>
     </div>
   </div>
 
-  {MODE === 'specific' && (
-    <section class="add-section">
-      <div class="search-bar">
-        <svg class="search-icon" width="20" height="20" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-          <circle cx="11" cy="11" r="8" stroke="currentColor" stroke-width="2"/>
-          <path d="M21 21l-4.35-4.35" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
-        </svg>
-        <input
-          type="text"
-          id="new-alias-input"
-          class="search-input"
-          placeholder={`e.g. netflix@${DOMAIN}`}
-          autocomplete="off"
-          spellcheck="false"
-        />
-        <button class="search-btn" id="add-alias-btn">
-          <span class="spinner" id="add-spinner"></span>
-          <span id="add-label">Add Alias</span>
-        </button>
+  <div class="actions-row">
+    {MODE === 'specific' && (
+      <div class="add-section">
+        <div class="search-bar">
+          <svg class="search-icon" width="20" height="20" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+            <circle cx="11" cy="11" r="8" stroke="currentColor" stroke-width="2"/>
+            <path d="M21 21l-4.35-4.35" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+          </svg>
+          <input
+            type="text"
+            id="new-alias-input"
+            class="search-input"
+            placeholder={`e.g. netflix@${DOMAIN}`}
+            autocomplete="off"
+            spellcheck="false"
+          />
+          <input
+            type="date"
+            id="expires-input"
+            class="expires-input"
+            title="Optional expiration date"
+          />
+          <button class="search-btn" id="add-alias-btn">
+            <span class="spinner" id="add-spinner"></span>
+            <span id="add-label">Add Alias</span>
+          </button>
+        </div>
+        <div class="error-banner" id="add-error"></div>
       </div>
-      <div class="error-banner" id="add-error"></div>
-    </section>
-  )}
+    )}
+    <div class="export-section">
+      <a href="/api/aliases/export" class="export-btn" download>
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+          <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+          <polyline points="7,10 12,15 17,10" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+          <line x1="12" y1="15" x2="12" y2="3" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+        </svg>
+        Export CSV
+      </a>
+      <a href="/logout" class="logout-btn">Logout</a>
+    </div>
+  </div>
 
   <div class="options-row">
     <span class="options-label">Filter:</span>
     <div class="pills">
-      <button class="pill active" data-filter="all">All <span class="pill-count">{total}</span></button>
-      <button class="pill" data-filter="active">Active <span class="pill-count">{active}</span></button>
-      <button class="pill" data-filter="blocked">Blocked <span class="pill-count">{blocked}</span></button>
+      <button class="pill active" data-filter="all">All <span class="pill-count">{totalCount}</span></button>
+      <button class="pill" data-filter="active">Active <span class="pill-count">{activeCount}</span></button>
+      <button class="pill" data-filter="blocked">Blocked <span class="pill-count">{blockedCount}</span></button>
     </div>
   </div>
 
@@ -100,6 +123,7 @@ function formatDate(ms: number): string {
             <th>First Seen</th>
             <th>Last Seen</th>
             <th>Mails</th>
+            <th>Expires</th>
             <th>Status</th>
             <th>Actions</th>
           </tr>
@@ -109,10 +133,17 @@ function formatDate(ms: number): string {
             <tr data-address={alias.address} data-status={alias.status} class="alias-row">
               <td class="alias-address">
                 <code>{alias.address}</code>
+                <button class="copy-btn" data-address={alias.address} title="Copy to clipboard">
+                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                    <rect x="9" y="9" width="13" height="13" rx="2" stroke="currentColor" stroke-width="2"/>
+                    <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1" stroke="currentColor" stroke-width="2"/>
+                  </svg>
+                </button>
               </td>
               <td class="alias-date">{formatDate(alias.first_seen)}</td>
               <td class="alias-date">{formatDate(alias.last_seen)}</td>
               <td class="alias-count">{alias.mail_count}</td>
+              <td class="alias-expires">{alias.expires_at ? formatDate(alias.expires_at) : '-'}</td>
               <td>
                 <span class={`badge ${alias.status === 'active' ? 'badge-active' : 'badge-blocked'}`}>
                   {alias.status}
@@ -138,7 +169,17 @@ function formatDate(ms: number): string {
         </div>
       )}
     </div>
+    {hasMore && (
+      <div class="load-more-section">
+        <button class="load-more-btn" id="load-more-btn">
+          <span class="spinner" id="load-more-spinner"></span>
+          <span id="load-more-label">Load More</span>
+        </button>
+      </div>
+    )}
   </section>
+  
+  <div class="toast-container" id="toast-container"></div>
 </Layout>
 
 <style>
@@ -228,8 +269,18 @@ function formatDate(ms: number): string {
     letter-spacing: 0.05em;
   }
 
-  .add-section {
+  .actions-row {
+    display: flex;
+    gap: 1rem;
     margin-bottom: 2rem;
+    flex-wrap: wrap;
+    justify-content: space-between;
+    align-items: flex-start;
+  }
+
+  .add-section {
+    flex: 1;
+    min-width: 300px;
   }
 
   .search-bar {
@@ -260,10 +311,27 @@ function formatDate(ms: number): string {
     color: var(--text-primary);
     font-size: 1rem;
     width: 100%;
+    min-width: 150px;
   }
 
   .search-input::placeholder {
     color: var(--text-muted);
+  }
+
+  .expires-input {
+    background: var(--bg-tertiary);
+    border: 1px solid var(--border-color);
+    border-radius: var(--radius-sm);
+    padding: 0.5rem;
+    color: var(--text-primary);
+    font-size: 0.875rem;
+    width: 130px;
+    flex-shrink: 0;
+  }
+
+  .expires-input::-webkit-calendar-picker-indicator {
+    filter: invert(1);
+    cursor: pointer;
   }
 
   .search-btn {
@@ -278,6 +346,7 @@ function formatDate(ms: number): string {
     font-weight: 500;
     transition: all var(--transition);
     white-space: nowrap;
+    flex-shrink: 0;
   }
 
   .search-btn:hover:not(:disabled) {
@@ -288,6 +357,32 @@ function formatDate(ms: number): string {
   .search-btn:disabled {
     opacity: 0.6;
     cursor: not-allowed;
+  }
+
+  .export-section {
+    display: flex;
+    gap: 0.5rem;
+    align-items: center;
+  }
+
+  .export-btn, .logout-btn {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    background: var(--bg-secondary);
+    border: 1px solid var(--border-color);
+    color: var(--text-secondary);
+    padding: 0.6rem 1rem;
+    border-radius: var(--radius-md);
+    font-size: 0.875rem;
+    font-weight: 500;
+    transition: all var(--transition);
+    text-decoration: none;
+  }
+
+  .export-btn:hover, .logout-btn:hover {
+    border-color: var(--accent);
+    color: var(--accent);
   }
 
   .spinner {
@@ -386,7 +481,7 @@ function formatDate(ms: number): string {
   .alias-table {
     width: 100%;
     border-collapse: collapse;
-    min-width: 700px;
+    min-width: 800px;
   }
 
   .alias-table th {
@@ -419,9 +514,37 @@ function formatDate(ms: number): string {
     border-bottom: none;
   }
 
+  .alias-address {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+  }
+
   .alias-address code {
     color: var(--text-primary);
     font-weight: 500;
+  }
+
+  .copy-btn {
+    background: transparent;
+    border: none;
+    color: var(--text-muted);
+    padding: 0.25rem;
+    border-radius: var(--radius-sm);
+    cursor: pointer;
+    transition: all var(--transition);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+
+  .copy-btn:hover {
+    color: var(--accent);
+    background: color-mix(in srgb, var(--accent) 10%, transparent);
+  }
+
+  .copy-btn.copied {
+    color: #4ade80;
   }
 
   .alias-date {
@@ -432,6 +555,11 @@ function formatDate(ms: number): string {
   .alias-count {
     font-weight: 600;
     color: var(--text-secondary);
+  }
+
+  .alias-expires {
+    color: var(--text-muted);
+    font-size: 0.9rem;
   }
 
   .badge {
@@ -501,6 +629,67 @@ function formatDate(ms: number): string {
     font-size: 1rem;
   }
 
+  .load-more-section {
+    text-align: center;
+    padding: 1.5rem;
+  }
+
+  .load-more-btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.5rem;
+    background: var(--bg-tertiary);
+    border: 1px solid var(--border-color);
+    color: var(--text-secondary);
+    padding: 0.75rem 1.5rem;
+    border-radius: var(--radius-md);
+    font-size: 0.9rem;
+    font-weight: 500;
+    transition: all var(--transition);
+  }
+
+  .load-more-btn:hover:not(:disabled) {
+    border-color: var(--accent);
+    color: var(--accent);
+  }
+
+  .load-more-btn:disabled {
+    opacity: 0.6;
+    cursor: not-allowed;
+  }
+
+  .toast-container {
+    position: fixed;
+    bottom: 2rem;
+    right: 2rem;
+    z-index: 1000;
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+  }
+
+  .toast {
+    background: color-mix(in srgb, #f87171 15%, var(--bg-secondary));
+    border: 1px solid color-mix(in srgb, #f87171 30%, var(--border-color));
+    border-radius: var(--radius-md);
+    padding: 0.75rem 1rem;
+    color: #fca5a5;
+    font-size: 0.9rem;
+    animation: slideIn 0.3s ease;
+    max-width: 300px;
+  }
+
+  @keyframes slideIn {
+    from {
+      transform: translateX(100%);
+      opacity: 0;
+    }
+    to {
+      transform: translateX(0);
+      opacity: 1;
+    }
+  }
+
   @media (max-width: 768px) {
     .hero-title {
       font-size: 2rem;
@@ -522,17 +711,74 @@ function formatDate(ms: number): string {
       width: 100%;
       justify-content: center;
     }
+
+    .expires-input {
+      width: 100%;
+    }
+
+    .actions-row {
+      flex-direction: column;
+    }
+
+    .export-section {
+      width: 100%;
+      justify-content: flex-end;
+    }
+
+    .toast-container {
+      left: 1rem;
+      right: 1rem;
+      bottom: 1rem;
+    }
   }
 </style>
 
-<script define:vars={{ apiToken: Astro.locals.runtime.env.API_TOKEN, domain: DOMAIN, mode: MODE }}>
+<script define:vars={{ domain: DOMAIN, mode: MODE }}>
+  const formatDate = (ms) => {
+    const date = new Date(ms);
+    const now = new Date();
+    const diff = now.getTime() - date.getTime();
+    const seconds = Math.floor(diff / 1000);
+    const minutes = Math.floor(seconds / 60);
+    const hours = Math.floor(minutes / 60);
+    const days = Math.floor(hours / 24);
+    
+    if (days > 30) {
+      return date.toLocaleDateString('en-US', { year: 'numeric', month: 'short', day: 'numeric' });
+    } else if (days > 0) {
+      return `${days}d ago`;
+    } else if (hours > 0) {
+      return `${hours}h ago`;
+    } else if (minutes > 0) {
+      return `${minutes}m ago`;
+    } else {
+      return 'Just now';
+    }
+  };
+
+  function showToast(message, duration = 4000) {
+    const container = document.getElementById('toast-container');
+    const toast = document.createElement('div');
+    toast.className = 'toast';
+    toast.textContent = message;
+    container.appendChild(toast);
+    setTimeout(() => {
+      toast.style.animation = 'slideIn 0.3s ease reverse';
+      setTimeout(() => toast.remove(), 300);
+    }, duration);
+  }
+
+  function showError(message) {
+    showToast(message);
+  }
+
   async function apiFetch(path, method = 'GET', body = null) {
     const opts = {
       method,
       headers: {
         'Content-Type': 'application/json',
-        'Authorization': `Bearer ${apiToken}`
-      }
+      },
+      credentials: 'same-origin'
     };
     if (body) opts.body = JSON.stringify(body);
     const res = await fetch(path, opts);
@@ -586,7 +832,7 @@ function formatDate(ms: number): string {
       badge.textContent = newStatus;
     } else {
       btn.textContent = currentStatus === 'active' ? 'Disable' : 'Enable';
-      alert('Failed to update alias.');
+      showError('Failed to update alias.');
     }
     btn.disabled = false;
   }
@@ -612,16 +858,116 @@ function formatDate(ms: number): string {
     if (res.ok) {
       document.querySelector(`tr[data-address="${address}"]`)?.remove();
     } else {
-      alert('Failed to delete alias.');
+      showError('Failed to delete alias.');
       btn.disabled = false;
     }
   }
 
+  function attachCopyListeners() {
+    document.querySelectorAll('.copy-btn').forEach(btn => {
+      btn.removeEventListener('click', handleCopy);
+      btn.addEventListener('click', handleCopy);
+    });
+  }
+
+  async function handleCopy(e) {
+    const btn = e.currentTarget;
+    const address = btn.dataset.address;
+    
+    try {
+      await navigator.clipboard.writeText(address);
+      btn.classList.add('copied');
+      const svg = btn.querySelector('svg');
+      svg.innerHTML = '<path d="M20 6L9 17l-5-5" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>';
+      setTimeout(() => {
+        btn.classList.remove('copied');
+        svg.innerHTML = '<rect x="9" y="9" width="13" height="13" rx="2" stroke="currentColor" stroke-width="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1" stroke="currentColor" stroke-width="2"/>';
+      }, 2000);
+    } catch {
+      showError('Failed to copy to clipboard.');
+    }
+  }
+
+  let currentPage = 1;
+  const limit = 100;
+
+  async function loadMore() {
+    const btn = document.getElementById('load-more-btn');
+    const spinner = document.getElementById('load-more-spinner');
+    const label = document.getElementById('load-more-label');
+    
+    btn.disabled = true;
+    spinner.style.display = 'block';
+    label.textContent = 'Loading…';
+    
+    currentPage++;
+    const res = await apiFetch(`/api/aliases?page=${currentPage}&limit=${limit}`);
+    const data = await res.json();
+    
+    if (res.ok && data.aliases?.length > 0) {
+      const tbody = document.getElementById('alias-tbody');
+      
+      data.aliases.forEach(alias => {
+        const row = document.createElement('tr');
+        row.dataset.address = alias.address;
+        row.dataset.status = alias.status;
+        row.className = 'alias-row';
+        row.innerHTML = `
+          <td class="alias-address">
+            <code>${alias.address}</code>
+            <button class="copy-btn" data-address="${alias.address}" title="Copy to clipboard">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                <rect x="9" y="9" width="13" height="13" rx="2" stroke="currentColor" stroke-width="2"/>
+                <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1" stroke="currentColor" stroke-width="2"/>
+              </svg>
+            </button>
+          </td>
+          <td class="alias-date">${formatDate(alias.first_seen)}</td>
+          <td class="alias-date">${formatDate(alias.last_seen)}</td>
+          <td class="alias-count">${alias.mail_count}</td>
+          <td class="alias-expires">${alias.expires_at ? formatDate(alias.expires_at) : '-'}</td>
+          <td>
+            <span class="badge ${alias.status === 'active' ? 'badge-active' : 'badge-blocked'}">
+              ${alias.status}
+            </span>
+          </td>
+          <td class="alias-actions">
+            <button class="btn-sm btn-toggle" data-address="${alias.address}" data-status="${alias.status}">
+              ${alias.status === 'active' ? 'Disable' : 'Enable'}
+            </button>
+            <button class="btn-sm btn-delete btn-danger" data-address="${alias.address}">
+              Delete
+            </button>
+          </td>
+        `;
+        tbody.appendChild(row);
+      });
+      
+      attachToggleListeners();
+      attachDeleteListeners();
+      attachCopyListeners();
+      
+      if (data.aliases.length < limit) {
+        btn.remove();
+      } else {
+        btn.disabled = false;
+        spinner.style.display = 'none';
+        label.textContent = 'Load More';
+      }
+    } else {
+      btn.remove();
+    }
+  }
+
+  document.getElementById('load-more-btn')?.addEventListener('click', loadMore);
+
   attachToggleListeners();
   attachDeleteListeners();
+  attachCopyListeners();
 
   if (mode === 'specific') {
     const input = document.getElementById('new-alias-input');
+    const expiresInput = document.getElementById('expires-input');
     const btn = document.getElementById('add-alias-btn');
     const errorEl = document.getElementById('add-error');
     const spinner = document.getElementById('add-spinner');
@@ -629,6 +975,7 @@ function formatDate(ms: number): string {
 
     btn?.addEventListener('click', async () => {
       const address = input.value.trim().toLowerCase();
+      const expiresAt = expiresInput.value ? new Date(expiresInput.value).getTime() : null;
       errorEl.style.display = 'none';
 
       if (!address) return;
@@ -642,19 +989,32 @@ function formatDate(ms: number): string {
       spinner.style.display = 'block';
       label.textContent = 'Adding…';
 
-      const res = await apiFetch('/api/aliases', 'POST', { address });
+      const body = { address };
+      if (expiresAt) body.expires_at = expiresAt;
+      
+      const res = await apiFetch('/api/aliases', 'POST', body);
       const data = await res.json();
 
       if (res.ok) {
         input.value = '';
+        expiresInput.value = '';
         const tbody = document.getElementById('alias-tbody');
-        const now = new Date().toLocaleDateString();
+        const now = Date.now();
         tbody.insertAdjacentHTML('afterbegin', `
           <tr data-address="${address}" data-status="active" class="alias-row">
-            <td class="alias-address"><code>${address}</code></td>
-            <td class="alias-date">${now}</td>
-            <td class="alias-date">${now}</td>
+            <td class="alias-address">
+              <code>${address}</code>
+              <button class="copy-btn" data-address="${address}" title="Copy to clipboard">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                  <rect x="9" y="9" width="13" height="13" rx="2" stroke="currentColor" stroke-width="2"/>
+                  <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1" stroke="currentColor" stroke-width="2"/>
+                </svg>
+              </button>
+            </td>
+            <td class="alias-date">${formatDate(now)}</td>
+            <td class="alias-date">${formatDate(now)}</td>
             <td class="alias-count">0</td>
+            <td class="alias-expires">${expiresAt ? formatDate(expiresAt) : '-'}</td>
             <td><span class="badge badge-active">active</span></td>
             <td class="alias-actions">
               <button class="btn-sm btn-toggle" data-address="${address}" data-status="active">Disable</button>
@@ -664,6 +1024,7 @@ function formatDate(ms: number): string {
         `);
         attachToggleListeners();
         attachDeleteListeners();
+        attachCopyListeners();
       } else {
         errorEl.textContent = data.error ?? 'Failed to add alias.';
         errorEl.style.display = 'block';

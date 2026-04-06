@@ -1,6 +1,6 @@
 name = "veil-email-worker"
 main = "src/index.js"
-compatibility_date = "2024-09-23"
+compatibility_date = "2025-04-01"
 
 [[d1_databases]]
 binding = "DB"
@@ -8,3 +8,6 @@ database_name = "veil-db"
 database_id = "REPLACE_WITH_YOUR_D1_ID"
 
 [vars]
+
+[limits]
+email_minutes = 100

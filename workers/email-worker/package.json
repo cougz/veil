@@ -1,5 +1,8 @@
 {
   "name": "veil-email-worker",
   "private": true,
-  "type": "module"
+  "type": "module",
+  "devDependencies": {
+    "@cloudflare/workers-types": "^4.20250401.0"
+  }
 }
