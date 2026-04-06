@@ -140,9 +140,13 @@ In the Cloudflare dashboard, go to **Worker → Settings → Bindings → D1 Dat
 ### Step 7: Configure Email Routing
 
 1. Go to your domain → **Email → Email Routing**
-2. Add a **Catch-All** rule
-3. Action: Send to Worker
-4. Select: `veil-email-worker`
+2. Add a **Destination address** - enter your `FORWARD_TO` address and click Verify
+3. Click the verification link sent to that address
+4. Add a **Catch-All** rule
+5. Action: Send to Worker
+6. Select: `veil-email-worker`
+
+> **Note**: The destination address must be verified before email forwarding will work. You'll get a "destination address not verified" error if you skip this step.
 
 ### Step 8: Deploy
 
