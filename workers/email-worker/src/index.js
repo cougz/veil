@@ -24,24 +24,32 @@ function isRateLimited(key) {
   return false;
 }
 
+async function getSetting(db, key, envFallback) {
+  const row = await db
+    .prepare('SELECT value FROM settings WHERE key = ?')
+    .bind(key)
+    .first();
+  return row?.value ?? envFallback ?? null;
+}
+
 export default {
   async email(message, env, ctx) {
     try {
       const alias = message.to.toLowerCase().trim();
       const now = Date.now();
-      const mode = (env.MODE ?? 'catchall').toLowerCase();
-      const forwardTo = env.FORWARD_TO;
-      const rejectMessage = env.REJECT_MESSAGE ?? 'This address is no longer active';
-
-      if (!forwardTo) {
-        console.error('FORWARD_TO not set', { alias, from: message.from });
-        message.setReject('Server misconfiguration: FORWARD_TO not set');
-        return;
-      }
 
       if (!env.DB) {
         console.error('DB not bound', { alias, from: message.from });
         message.setReject('Server misconfiguration: database not bound');
+        return;
+      }
+
+      const forwardTo = await getSetting(env.DB, 'forward_to', env.FORWARD_TO);
+      const rejectMessage = await getSetting(env.DB, 'reject_message', env.REJECT_MESSAGE) ?? 'This address is no longer active';
+
+      if (!forwardTo) {
+        console.error('FORWARD_TO not set', { alias, from: message.from });
+        message.setReject('Server misconfiguration: FORWARD_TO not set');
         return;
       }
 
@@ -70,11 +78,6 @@ export default {
       }
 
       if (!row) {
-        if (mode === 'specific') {
-          console.info('Rejected (specific mode)', { alias, from: message.from });
-          message.setReject(rejectMessage);
-          return;
-        }
         await env.DB
           .prepare(`
             INSERT INTO aliases (address, status, first_seen, last_seen, mail_count)

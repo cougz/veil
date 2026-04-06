@@ -7,6 +7,11 @@ CREATE TABLE IF NOT EXISTS aliases (
   expires_at INTEGER
 );
 
+CREATE TABLE IF NOT EXISTS settings (
+  key   TEXT PRIMARY KEY,
+  value TEXT NOT NULL
+);
+
 CREATE INDEX IF NOT EXISTS idx_aliases_status ON aliases(status);
 CREATE INDEX IF NOT EXISTS idx_aliases_last_seen ON aliases(last_seen DESC);
 CREATE INDEX IF NOT EXISTS idx_aliases_expires_at ON aliases(expires_at);

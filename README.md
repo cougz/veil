@@ -10,11 +10,10 @@ Veil is a self-hosted, open-source email alias relay built entirely on Cloudflar
 ## Features
 
 - **Session-based authentication** - Secure login with HttpOnly cookies (no tokens in browser)
-- **Two modes**: Catch-All (auto-create aliases) or Specific (whitelist only)
+- **Configurable settings** - Set forwarding address and rejection message via dashboard
 - **Expiring aliases** - Set optional expiration dates for temporary addresses
 - **Rate limiting** - 100 emails/minute per sender to prevent abuse
 - **CSV export** - Download your alias list for backup
-- **Copy-to-clipboard** - Quick copy buttons for each alias
 - **Pagination** - Handles large alias lists efficiently
 
 ## Known Limitations
@@ -113,9 +112,8 @@ In the Cloudflare dashboard, go to **Worker → Settings → Variables and Secre
 
 | Variable | Type | Required | Description |
 |---|---|---|---|
-| `FORWARD_TO` | **Secret** | ✅ | Destination email address e.g. `you@proton.me` |
-| `MODE` | **Secret** | ✅ | `catchall` or `specific` |
-| `REJECT_MESSAGE` | **Secret** | ✅ | SMTP rejection text e.g. `This address is no longer active` |
+| `FORWARD_TO` | **Secret** | ❌ | Destination email address (optional - can be set via Settings page) |
+| `REJECT_MESSAGE` | **Secret** | ❌ | SMTP rejection text (optional - can be set via Settings page) |
 
 **Frontend Worker Variables**
 
@@ -123,12 +121,11 @@ In the Cloudflare dashboard, go to **Worker → Settings → Variables and Secre
 |---|---|---|---|
 | `API_TOKEN` | **Secret** | ✅ | Password for dashboard login (generate with `openssl rand -hex 32`) |
 | `DOMAIN` | **Secret** | ✅ | The relay domain e.g. `yourdomain.com` |
-| `MODE` | **Secret** | ✅ | `catchall` or `specific` (mirrors Email Worker) |
 | `APP_NAME` | **Secret** | ❌ | Defaults to `Veil` |
 | `APP_DESCRIPTION` | **Secret** | ❌ | Defaults to the tagline above |
 | `ACCENT_COLOR` | **Secret** | ❌ | Hex color, defaults to `#6d83f2` |
 
-> **Note**: Even though some values (like `MODE` or `ACCENT_COLOR`) aren't sensitive, they must still be set as **Secret** to prevent them from being overwritten on each git push.
+> **Note**: `FORWARD_TO` and `REJECT_MESSAGE` can be configured via the Settings page in the dashboard. Settings stored in the database take precedence over environment variables.
 
 ### Step 6: Bind D1 database to both Workers
 
@@ -163,19 +160,18 @@ Both Workers will automatically rebuild and redeploy on every push to `main` —
 
 1. Visit your frontend Worker URL — you should see the Veil login page
 2. Log in with your `API_TOKEN`
-3. Send a test email to `test@yourdomain.com`
-4. Check the dashboard to see the alias appear (in catchall mode)
-5. Verify the email was forwarded to your `FORWARD_TO` address
+3. Go to **Settings** and configure your forwarding address
+4. Send a test email to `test@yourdomain.com`
+5. Check the dashboard to see the alias appear
+6. Verify the email was forwarded to your configured address
 
 ## Usage
 
 - Visit your frontend Worker's URL to access the dashboard
 - Log in using your `API_TOKEN` as the password
-- In **Specific mode**, add aliases manually before mail can flow through them
-- In **Catch-All mode**, aliases appear automatically as mail arrives
-- Set an **expiration date** when creating aliases for temporary addresses
-- Click the **copy button** to copy an alias to clipboard
-- Click **Disable** to stop forwarding from a specific alias (mail is rejected at the Worker level)
+- Configure **Forward To** and **Reject Message** in the Settings page
+- Aliases are created automatically when emails arrive (controlled by Cloudflare Email Routing rules)
+- Click **Disable** to block a specific alias (mail is rejected at the Worker level)
 - Click **Delete** to remove the record entirely
 - Use **Export CSV** to backup your alias list
 - Re-enable a disabled alias at any time with the **Enable** button
