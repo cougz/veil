@@ -1,10 +1,10 @@
 ---
-import { APP_NAME, ACCENT_COLOR } from '../config';
-
 interface Props {
   title?: string;
+  accentColor?: string;
 }
-const { title = APP_NAME } = Astro.props;
+
+const { title = 'Veil', accentColor = '#6d83f2' } = Astro.props;
 ---
 <!DOCTYPE html>
 <html lang="en">
@@ -53,7 +53,7 @@ const { title = APP_NAME } = Astro.props;
 </body>
 </html>
 
-<style is:global define:vars={{ accentColor: ACCENT_COLOR }}>
+<style is:global define:vars={{ accentColor }}>
   :root {
     --accent:       var(--accentColor);
     --accent-light: color-mix(in srgb, var(--accentColor) 80%, white);

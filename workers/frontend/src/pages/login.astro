@@ -1,28 +1,35 @@
 ---
 import Layout from '../layouts/Layout.astro';
-import { APP_NAME } from '../config';
 import { createSessionToken, setSessionCookie } from '../lib/auth';
-import { json } from '../lib/json';
 
+const env = Astro.locals.runtime.env;
+const APP_NAME: string = env.APP_NAME ?? 'Veil';
 const error = Astro.url.searchParams.get('error');
 
 if (Astro.request.method === 'POST') {
   const formData = await Astro.request.formData();
   const password = formData.get('password') as string;
-  const apiToken = Astro.locals.runtime.env.API_TOKEN;
+  const apiToken = env.API_TOKEN;
   
   if (password && password === apiToken) {
     const sessionToken = createSessionToken(apiToken);
-    return Astro.redirect('/', 302, {
-      'Set-Cookie': setSessionCookie(sessionToken),
+    return new Response(null, {
+      status: 302,
+      headers: {
+        'Location': '/',
+        'Set-Cookie': setSessionCookie(sessionToken),
+      },
     });
   } else {
-    return Astro.redirect('/login?error=1', 302);
+    return new Response(null, {
+      status: 302,
+      headers: { 'Location': '/login?error=1' },
+    });
   }
 }
 ---
 
-<Layout title={`Login - ${APP_NAME}`}>
+<Layout title={`Login — ${APP_NAME}`} accentColor={env.ACCENT_COLOR ?? '#6d83f2'}>
   <section class="login-section">
     <div class="login-card">
       <h1 class="login-title">{APP_NAME}</h1>

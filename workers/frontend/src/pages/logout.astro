@@ -1,7 +1,11 @@
 ---
 import { clearSessionCookie } from '../lib/auth';
 
-return Astro.redirect('/login', 302, {
-  'Set-Cookie': clearSessionCookie(),
+return new Response(null, {
+  status: 302,
+  headers: {
+    'Location': '/login',
+    'Set-Cookie': clearSessionCookie(),
+  },
 });
 ---

@@ -62,12 +62,16 @@ wrangler d1 execute veil-db --file=./schema.sql
 1. Go to **Workers & Pages → Create → Connect to Git**
 2. Connect your fork for the **Email Worker**:
    - Root directory: `workers/email-worker`
+   - Install command: `npm install`
    - Build command: *(leave empty)*
    - Deploy command: `wrangler deploy`
-3. Connect your fork again for the **Frontend Worker**:
+   - Build watch paths → Include: `workers/email-worker/**`
+3. Connect your fork for the **Frontend Worker**:
    - Root directory: `workers/frontend`
+   - Install command: `npm install`
    - Build command: `npm run build`
    - Deploy command: `wrangler deploy`
+   - Build watch paths → Include: `workers/frontend/**`
 4. Set the branch trigger to `main` for both.
 
 ### Step 5: Set deploy variables
@@ -129,9 +133,12 @@ Push any change to `main` to trigger your first Workers Builds deployment. Both 
 | | Email Worker | Frontend Worker |
 |---|---|---|
 | **Root directory** | `workers/email-worker` | `workers/frontend` |
+| **Install command** | `npm install` | `npm install` |
 | **Build command** | *(none)* | `npm run build` |
+| **Deploy command** | `wrangler deploy` | `wrangler deploy` |
 | **Output directory** | *(none)* | `dist` |
 | **Branch trigger** | `main` | `main` |
+| **Build watch paths** | `workers/email-worker/**` | `workers/frontend/**` |
 | **D1 binding** | `DB` → `veil-db` | `DB` → `veil-db` |
 
 ## License

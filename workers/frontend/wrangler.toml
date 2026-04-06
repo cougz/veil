@@ -1,7 +1,9 @@
 name = "veil-frontend"
-main = "./dist/_worker.js"
+main = "./dist/_worker.js/index.js"
 compatibility_date = "2025-04-01"
 compatibility_flags = ["nodejs_compat"]
+
+assets = { directory = "./dist", binding = "ASSETS" }
 
 [[d1_databases]]
 binding = "DB"
@@ -9,6 +11,3 @@ database_name = "veil-db"
 database_id = "17141d5e-9cbc-4dce-ab8e-313c5ef96960"
 
 [vars]
-
-[build]
-command = "npm run build"

@@ -8,6 +8,3 @@ database_name = "veil-db"
 database_id = "17141d5e-9cbc-4dce-ab8e-313c5ef96960"
 
 [vars]
-
-[limits]
-email_minutes = 100
