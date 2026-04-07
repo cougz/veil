@@ -469,101 +469,15 @@ const blocked = aliases.filter((a: any) => a.status === 'blocked').length;
   }
 </style>
 
-<div id="auth-token" data-token={Astro.locals.runtime.env.API_TOKEN} style="display:none"></div>
 <script>
-  const apiToken = document.getElementById('auth-token')?.dataset.token ?? '';
-
   async function apiFetch(path, method = 'GET', body = null) {
     const opts = {
       method,
       headers: {
-        'Content-Type': 'application/json',
-        'Authorization': `Bearer ${apiToken}`
+        'Content-Type': 'application/json'
       }
     };
     if (body) opts.body = JSON.stringify(body);
     const res = await fetch(path, opts);
     return res;
   }
-
-  document.querySelectorAll('.pill[data-filter]').forEach(pill => {
-    pill.addEventListener('click', () => {
-      document.querySelectorAll('.pill[data-filter]').forEach(p => p.classList.remove('active'));
-      pill.classList.add('active');
-      const filter = pill.dataset.filter;
-      document.querySelectorAll('.alias-row').forEach(row => {
-        if (filter === 'all' || row.dataset.status === filter) {
-          row.style.display = '';
-        } else {
-          row.style.display = 'none';
-        }
-      });
-    });
-  });
-
-  function attachToggleListeners() {
-    document.querySelectorAll('.btn-toggle').forEach(btn => {
-      btn.removeEventListener('click', handleToggle);
-      btn.addEventListener('click', handleToggle);
-    });
-  }
-
-  async function handleToggle(e) {
-    const btn = e.currentTarget;
-    const address = btn.dataset.address;
-    const currentStatus = btn.dataset.status;
-    const newStatus = currentStatus === 'active' ? 'blocked' : 'active';
-
-    btn.disabled = true;
-    btn.textContent = '...';
-
-    const res = await apiFetch(
-      `/api/aliases/${encodeURIComponent(address)}`,
-      'PATCH',
-      { status: newStatus }
-    );
-
-    if (res.ok) {
-      const row = document.querySelector(`tr[data-address="${address}"]`);
-      row.dataset.status = newStatus;
-      btn.dataset.status = newStatus;
-      btn.textContent = newStatus === 'active' ? 'Disable' : 'Enable';
-      const badge = row.querySelector('.badge');
-      badge.className = `badge ${newStatus === 'active' ? 'badge-active' : 'badge-blocked'}`;
-      badge.textContent = newStatus;
-    } else {
-      btn.textContent = currentStatus === 'active' ? 'Disable' : 'Enable';
-      alert('Failed to update alias.');
-    }
-    btn.disabled = false;
-  }
-
-  function attachDeleteListeners() {
-    document.querySelectorAll('.btn-delete').forEach(btn => {
-      btn.removeEventListener('click', handleDelete);
-      btn.addEventListener('click', handleDelete);
-    });
-  }
-
-  async function handleDelete(e) {
-    const btn = e.currentTarget;
-    const address = btn.dataset.address;
-    if (!confirm(`Delete ${address}? This cannot be undone.`)) return;
-
-    btn.disabled = true;
-    const res = await apiFetch(
-      `/api/aliases/${encodeURIComponent(address)}`,
-      'DELETE'
-    );
-
-    if (res.ok) {
-      document.querySelector(`tr[data-address="${address}"]`)?.remove();
-    } else {
-      alert('Failed to delete alias.');
-      btn.disabled = false;
-    }
-  }
-
-  attachToggleListeners();
-  attachDeleteListeners();
-</script>

@@ -244,17 +244,17 @@ for (const row of settingsRows as { key: string; value: string }[]) {
   const saveSpinner = document.getElementById('save-spinner');
   const saveLabel = document.getElementById('save-label');
   const saveStatus = document.getElementById('save-status');
-  const apiToken = document.getElementById('auth-token')?.dataset.token ?? '';
 
   form?.addEventListener('submit', async (e) => {
     e.preventDefault();
 
-    const forwardTo = document.getElementById('forward_to').value.trim();
-    const rejectMessage = document.getElementById('reject_message').value.trim();
+    const forwardTo = (document.getElementById('forward_to') as HTMLInputElement).value.trim();
+    const rejectMessage = (document.getElementById('reject_message') as HTMLInputElement).value.trim();
 
     saveBtn.disabled = true;
-    saveSpinner.style.display = 'block';
+    saveSpinner.style.display = 'block'
     saveLabel.textContent = 'Saving…';
+
     saveStatus.textContent = '';
     saveStatus.className = 'save-status';
 
@@ -262,8 +262,7 @@ for (const row of settingsRows as { key: string; value: string }[]) {
       const res = await fetch('/api/settings', {
         method: 'PUT',
         headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${apiToken}`
+          'Content-Type': 'application/json'
         },
         body: JSON.stringify({
           forward_to: forwardTo,
@@ -275,18 +274,18 @@ for (const row of settingsRows as { key: string; value: string }[]) {
 
       if (res.ok) {
         saveStatus.textContent = 'Settings saved successfully';
-        saveStatus.className = 'save-status success';
+        saveStatus.className = 'save-status success'
       } else {
-        saveStatus.textContent = data.error ?? 'Failed to save settings';
-        saveStatus.className = 'save-status error';
+        saveStatus.textContent = data.error ?? 'Failed to save settings'
+        saveStatus.className = 'save-status error'
       }
     } catch (err) {
-      saveStatus.textContent = 'Network error';
-      saveStatus.className = 'save-status error';
+      saveStatus.textContent = 'Network error'
+      saveStatus.className = 'save-status error'
     } finally {
-      saveBtn.disabled = false;
-      saveSpinner.style.display = 'none';
-      saveLabel.textContent = 'Save Settings';
+      saveBtn.disabled = false
+      saveSpinner.style.display = 'none'
+      saveLabel.textContent = 'Save Settings'
     }
   });
 </script>
