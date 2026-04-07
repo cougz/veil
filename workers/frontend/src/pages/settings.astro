@@ -249,8 +249,8 @@ for (const row of settingsRows as { key: string; value: string }[]) {
   form?.addEventListener('submit', async (e) => {
     e.preventDefault();
 
-    const forwardTo = (document.getElementById('forward_to') as HTMLInputElement).value.trim();
-    const rejectMessage = (document.getElementById('reject_message') as HTMLInputElement).value.trim();
+    const forwardTo = document.getElementById('forward_to').value.trim();
+    const rejectMessage = document.getElementById('reject_message').value.trim();
 
     saveBtn.disabled = true;
     saveSpinner.style.display = 'block';
