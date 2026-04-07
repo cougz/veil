@@ -14,7 +14,7 @@ try {
   const payload = await verifyAccessToken(Astro.request, env);
   userEmail = payload.email;
 } catch {
-  return Astro.redirect('/', 302);
+  return new Response('Unauthorized', { status: 401 });
 }
 
 const db = env.DB;
