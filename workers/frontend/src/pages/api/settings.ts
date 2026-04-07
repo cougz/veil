@@ -4,7 +4,7 @@ import { isAuthorized, unauthorized, json } from '../../lib/api';
 const VALID_KEYS = ['forward_to', 'reject_message'];
 
 export const GET: APIRoute = async ({ locals, request }) => {
-  if (!isAuthorized(request, locals.runtime.env)) return unauthorized();
+  if (!(await isAuthorized(request, locals.runtime.env))) return unauthorized();
 
   try {
     const db = locals.runtime.env.DB;
@@ -37,7 +37,7 @@ export const GET: APIRoute = async ({ locals, request }) => {
 };
 
 export const PUT: APIRoute = async ({ locals, request }) => {
-  if (!isAuthorized(request, locals.runtime.env)) return unauthorized();
+  if (!(await isAuthorized(request, locals.runtime.env))) return unauthorized();
 
   try {
     const body = await request.json();

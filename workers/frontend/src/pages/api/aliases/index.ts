@@ -2,7 +2,7 @@ import type { APIRoute } from 'astro';
 import { isAuthorized, unauthorized, json } from '../../../lib/api';
 
 export const GET: APIRoute = async ({ locals, request }) => {
-  if (!isAuthorized(request, locals.runtime.env)) return unauthorized();
+  if (!(await isAuthorized(request, locals.runtime.env))) return unauthorized();
 
   const url = new URL(request.url);
   const page = parseInt(url.searchParams.get('page') ?? '1', 10) || 1;
@@ -19,7 +19,7 @@ export const GET: APIRoute = async ({ locals, request }) => {
 };
 
 export const POST: APIRoute = async ({ locals, request }) => {
-  if (!isAuthorized(request, locals.runtime.env)) return unauthorized();
+  if (!(await isAuthorized(request, locals.runtime.env))) return unauthorized();
 
   const body = await request.json();
   const address = (body as any)?.address?.toLowerCase()?.trim();

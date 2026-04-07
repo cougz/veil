@@ -6,7 +6,7 @@ const env = Astro.locals.runtime.env;
 const APP_NAME: string = env.APP_NAME ?? 'Veil';
 const ACCENT_COLOR: string = env.ACCENT_COLOR ?? '#6d83f2';
 
-if (!isAuthenticated(Astro.request, env)) {
+if (!(await isAuthenticated(Astro.request, env))) {
   return Astro.redirect('/login', 302);
 }
 

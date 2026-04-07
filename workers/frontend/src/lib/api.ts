@@ -1,7 +1,7 @@
 import { isAuthenticated } from './auth';
 import { json } from './json';
 
-export function isAuthorized(request: Request, env: { API_TOKEN: string }): boolean {
+export async function isAuthorized(request: Request, env: { API_TOKEN: string }): Promise<boolean> {
   return isAuthenticated(request, env);
 }
 

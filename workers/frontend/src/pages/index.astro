@@ -9,7 +9,7 @@ const APP_DESCRIPTION: string = env.APP_DESCRIPTION ?? 'Wildcard email aliasing 
 const ACCENT_COLOR: string    = env.ACCENT_COLOR    ?? '#6d83f2';
 const DOMAIN: string          = env.DOMAIN          ?? 'yourdomain.com';
 
-if (!isAuthenticated(Astro.request, env)) {
+if (!(await isAuthenticated(Astro.request, env))) {
   return Astro.redirect('/login', 302);
 }
 

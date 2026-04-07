@@ -2,7 +2,7 @@ import type { APIRoute } from 'astro';
 import { isAuthorized, unauthorized, json } from '../../../lib/api';
 
 export const PATCH: APIRoute = async ({ locals, request, params }) => {
-  if (!isAuthorized(request, locals.runtime.env)) return unauthorized();
+  if (!(await isAuthorized(request, locals.runtime.env))) return unauthorized();
 
   const address = decodeURIComponent(params.address ?? '').toLowerCase();
   const body = await request.json();
@@ -23,7 +23,7 @@ export const PATCH: APIRoute = async ({ locals, request, params }) => {
 };
 
 export const DELETE: APIRoute = async ({ locals, request, params }) => {
-  if (!isAuthorized(request, locals.runtime.env)) return unauthorized();
+  if (!(await isAuthorized(request, locals.runtime.env))) return unauthorized();
 
   const address = decodeURIComponent(params.address ?? '').toLowerCase();
   const db = locals.runtime.env.DB;
