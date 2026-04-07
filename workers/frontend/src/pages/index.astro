@@ -469,7 +469,10 @@ const blocked = aliases.filter((a: any) => a.status === 'blocked').length;
   }
 </style>
 
-<script define:vars={{ apiToken: Astro.locals.runtime.env.API_TOKEN }}>
+<div id="auth-token" data-token={Astro.locals.runtime.env.API_TOKEN} style="display:none"></div>
+<script>
+  const apiToken = document.getElementById('auth-token')?.dataset.token ?? '';
+
   async function apiFetch(path, method = 'GET', body = null) {
     const opts = {
       method,

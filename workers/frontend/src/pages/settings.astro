@@ -237,12 +237,14 @@ for (const row of settingsRows as { key: string; value: string }[]) {
   }
 </style>
 
-<script define:vars={{ apiToken: Astro.locals.runtime.env.API_TOKEN }}>
+<div id="auth-token" data-token={Astro.locals.runtime.env.API_TOKEN} style="display:none"></div>
+<script>
   const form = document.getElementById('settings-form');
   const saveBtn = document.getElementById('save-btn');
   const saveSpinner = document.getElementById('save-spinner');
   const saveLabel = document.getElementById('save-label');
   const saveStatus = document.getElementById('save-status');
+  const apiToken = document.getElementById('auth-token')?.dataset.token ?? '';
 
   form?.addEventListener('submit', async (e) => {
     e.preventDefault();
