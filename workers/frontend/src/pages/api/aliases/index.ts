@@ -23,8 +23,33 @@ export const POST: APIRoute = async ({ locals, request }) => {
 
   const body = await request.json();
   const address = (body as any)?.address?.toLowerCase()?.trim();
-  const expiresAt = (body as any)?.expires_at ? Number((body as any)?.expires_at) : null;
+  let expiresAtRaw = (body as any)?.expires_at ? Number((body as any)?.expires_at) : null;
   const domain = locals.runtime.env.DOMAIN;
+
+  if (!address) return json({ error: 'address is required' }, 400);
+  if (!address.endsWith(`@${domain}`)) {
+    return json({ error: `address must be @${domain}` }, 400);
+  }
+
+  const localPart = address.split('@')[0];
+  if (!localPart || localPart.length === 0) {
+    return json({ error: 'local part of address cannot be empty' }, 400);
+  }
+  if (/\s/.test(localPart)) {
+    return json({ error: 'local part cannot contain whitespace' }, 400);
+  }
+  if (!/^[a-zA-Z0-9._%+\-]+$/.test(localPart)) {
+    return json({ error: 'local part contains invalid characters' }, 400);
+  }
+
+  const now = Date.now();
+  const db = locals.runtime.env.DB;
+
+  if (expiresAtRaw !== null) {
+    if (expiresAtRaw < 100000000000) {
+      expiresAtRaw = expiresAtRaw * 1000;
+    }
+  }
 
   if (!address) return json({ error: 'address is required' }, 400);
   if (!address.endsWith(`@${domain}`)) {

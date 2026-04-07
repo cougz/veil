@@ -112,8 +112,8 @@ In the Cloudflare dashboard, go to **Worker → Settings → Variables and Secre
 
 | Variable | Type | Required | Description |
 |---|---|---|---|
-| `FORWARD_TO` | **Secret** | ❌ | Destination email address (optional - can be set via Settings page) |
-| `REJECT_MESSAGE` | **Secret** | ❌ | SMTP rejection text (optional - can be set via Settings page) |
+| `FORWARD_TO` | **Secret** | ❌ | Destination email address (required - must Settings page, Otherwise forwarding will fail)) |
+| `REJECT_MESSAGE` | **Secret** | ❌ | SMTP rejection text (optional - defaults via Settings page) |
 
 **Frontend Worker Variables**
 

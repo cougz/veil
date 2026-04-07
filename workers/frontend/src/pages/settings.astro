@@ -73,9 +73,9 @@ for (const row of settingsRows as { key: string; value: string }[]) {
     </div>
   </form>
 
-  <div class="info-box">
-    <strong>Note:</strong> Settings stored here take precedence over environment variables. Leave a field empty to use the environment variable default (if set).
-  </div>
+<div class="info-box">
+  <strong>Note:</strong> Settings stored here take precedence over environment variables. Set forwarding address to save email forwarding. Leave reject message empty to use the environment variable default (if set).
+</div>
 </Layout>
 
 <style>
@@ -248,8 +248,8 @@ for (const row of settingsRows as { key: string; value: string }[]) {
   form?.addEventListener('submit', async (e) => {
     e.preventDefault();
 
-    const forwardTo = (document.getElementById('forward_to') as HTMLInputElement).value.trim();
-    const rejectMessage = (document.getElementById('reject_message') as HTMLInputElement).value.trim();
+    const forwardTo = document.getElementById('forward_to').value.trim();
+    const rejectMessage = document.getElementById('reject_message').value.trim();
 
     saveBtn.disabled = true;
     saveSpinner.style.display = 'block'
