@@ -27,6 +27,11 @@ export async function verifyAccessToken(
   if (!token) {
     throw new Error('Missing CF Access token');
   }
+  }
+  
+  if (!token) {
+    throw new Error('Missing CF Access token');
+  }
 
   const JWKS = createRemoteJWKSet(
     new URL(`${env.CF_ACCESS_TEAM_DOMAIN}/cdn-cgi/access/certs`)
