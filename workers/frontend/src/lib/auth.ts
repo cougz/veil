@@ -1,5 +1,7 @@
 import { createRemoteJWKSet, jwtVerify } from 'jose';
 
+import { json } from './json';
+
 export interface CFAccessPayload {
   email: string;
   sub:   string;
@@ -25,12 +27,7 @@ export async function verifyAccessToken(
   }
   
   if (!token) {
-    throw new Error('Missing CF Access token');
-  }
-  }
-  
-  if (!token) {
-    throw new Error('Missing CF Access token');
+    throw new Error('Missing CF access token');
   }
 
   const JWKS = createRemoteJWKSet(
@@ -38,7 +35,7 @@ export async function verifyAccessToken(
   );
 
   const { payload } = await jwtVerify(token, JWKS, {
-    issuer:   env.CF_ACCESS_TEAM_DOMAIN,
+    issuer: env.CF_ACCESS_TEAM_DOMAIN,
     audience: env.CF_ACCESS_AUD,
   });
 
