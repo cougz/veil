@@ -5,7 +5,7 @@ import { formatDate } from '../lib/dates';
 
 const env = Astro.locals.runtime.env;
 const APP_NAME: string        = env.APP_NAME        ?? 'Veil';
-const APP_DESCRIPTION: string = env.APP_DESCRIPTION ?? 'Wildcard email aliasing on Cloudflare Workers. Forward, filter, and burn addresses without exposing your inbox.';
+const APP_DESCRIPTION: string = env.APP_DESCRIPTION ?? 'Wildcard email aliasing. Forward, filter, and burn addresses without exposing your inbox.';
 const ACCENT_COLOR: string    = env.ACCENT_COLOR    ?? '#6d83f2';
 const DOMAIN: string          = env.DOMAIN          ?? 'yourdomain.com';
 
@@ -74,6 +74,7 @@ const blocked = aliases.filter((a: any) => a.status === 'blocked').length;
       <button class="pill" data-filter="active">Active <span class="pill-count">{active}</span></button>
       <button class="pill" data-filter="blocked">Blocked <span class="pill-count">{blocked}</span></button>
     </div>
+    <input type="text" class="search-input" id="alias-search" placeholder="Search aliases..." />
   </div>
 
   <section class="table-section">
@@ -81,17 +82,17 @@ const blocked = aliases.filter((a: any) => a.status === 'blocked').length;
       <table class="alias-table" id="alias-table">
         <thead>
           <tr>
-            <th>Address</th>
-            <th>First Seen</th>
-            <th>Last Seen</th>
-            <th>Mails</th>
-            <th>Status</th>
+            <th class="sortable" data-sort="address">Address <span class="sort-indicator"></span></th>
+            <th class="sortable" data-sort="first_seen">First Seen <span class="sort-indicator"></span></th>
+            <th class="sortable" data-sort="last_seen">Last Seen <span class="sort-indicator"></span></th>
+            <th class="sortable" data-sort="mail_count">Mails <span class="sort-indicator"></span></th>
+            <th class="sortable" data-sort="status">Status <span class="sort-indicator"></span></th>
             <th>Actions</th>
           </tr>
         </thead>
         <tbody id="alias-tbody">
           {aliases.map((alias: any) => (
-            <tr data-address={alias.address} data-status={alias.status} class="alias-row">
+            <tr data-address={alias.address} data-status={alias.status} data-first-seen={alias.first_seen} data-last-seen={alias.last_seen} data-mail-count={alias.mail_count} class="alias-row">
               <td class="alias-address">
                 <code>{alias.address}</code>
               </td>
@@ -253,6 +254,28 @@ const blocked = aliases.filter((a: any) => a.status === 'blocked').length;
     flex-wrap: wrap;
   }
 
+  .search-input {
+    margin-left: auto;
+    padding: 0.5rem 1rem;
+    border: 1px solid var(--border-color);
+    border-radius: var(--radius-sm);
+    background: var(--bg-secondary);
+    color: var(--text-primary);
+    font-size: 0.875rem;
+    min-width: 200px;
+    transition: all var(--transition);
+  }
+
+  .search-input:focus {
+    outline: none;
+    border-color: var(--accent);
+    box-shadow: 0 0 0 2px color-mix(in srgb, var(--accent) 20%, transparent);
+  }
+
+  .search-input::placeholder {
+    color: var(--text-muted);
+  }
+
   .options-label {
     color: var(--text-muted);
     font-size: 0.875rem;
@@ -329,6 +352,36 @@ const blocked = aliases.filter((a: any) => a.status === 'blocked').length;
     padding: 1rem 1.25rem;
     text-align: left;
     border-bottom: 1px solid var(--border-color);
+  }
+
+  .alias-table th.sortable {
+    cursor: pointer;
+    user-select: none;
+    transition: color var(--transition);
+  }
+
+  .alias-table th.sortable:hover {
+    color: var(--text-primary);
+  }
+
+  .sort-indicator {
+    display: inline-block;
+    margin-left: 0.25rem;
+    opacity: 0.5;
+  }
+
+  .sort-indicator::after {
+    content: '↕';
+  }
+
+  th.sort-asc .sort-indicator::after {
+    content: '↑';
+    opacity: 1;
+  }
+
+  th.sort-desc .sort-indicator::after {
+    content: '↓';
+    opacity: 1;
   }
 
   .alias-table td {
@@ -482,18 +535,90 @@ const blocked = aliases.filter((a: any) => a.status === 'blocked').length;
     return res;
   }
 
+  let currentSort = { column: null, asc: true };
+  let currentFilter = 'all';
+  let currentSearch = '';
+
+  function applyFiltersAndSort() {
+    const rows = Array.from(document.querySelectorAll('.alias-row'));
+    rows.forEach(row => {
+      const matchesFilter = currentFilter === 'all' || row.dataset.status === currentFilter;
+      const matchesSearch = !currentSearch || row.dataset.address.toLowerCase().includes(currentSearch.toLowerCase());
+      row.style.display = (matchesFilter && matchesSearch) ? '' : 'none';
+    });
+    if (currentSort.column) {
+      sortTable(currentSort.column, currentSort.asc);
+    }
+  }
+
   document.querySelectorAll('.pill[data-filter]').forEach(pill => {
     pill.addEventListener('click', () => {
       document.querySelectorAll('.pill[data-filter]').forEach(p => p.classList.remove('active'));
       pill.classList.add('active');
-      const filter = pill.dataset.filter;
-      document.querySelectorAll('.alias-row').forEach(row => {
-        if (filter === 'all' || row.dataset.status === filter) {
-          row.style.display = '';
-        } else {
-          row.style.display = 'none';
-        }
-      });
+      currentFilter = pill.dataset.filter;
+      applyFiltersAndSort();
+    });
+  });
+
+  const searchInput = document.getElementById('alias-search');
+  searchInput.addEventListener('input', (e) => {
+    currentSearch = e.target.value;
+    applyFiltersAndSort();
+  });
+
+  function sortTable(column, asc) {
+    const tbody = document.getElementById('alias-tbody');
+    const rows = Array.from(tbody.querySelectorAll('.alias-row'));
+    
+    rows.sort((a, b) => {
+      let valA, valB;
+      switch (column) {
+        case 'address':
+          valA = a.dataset.address.toLowerCase();
+          valB = b.dataset.address.toLowerCase();
+          break;
+        case 'first_seen':
+          valA = parseInt(a.dataset.firstSeen, 10);
+          valB = parseInt(b.dataset.firstSeen, 10);
+          break;
+        case 'last_seen':
+          valA = parseInt(a.dataset.lastSeen, 10);
+          valB = parseInt(b.dataset.lastSeen, 10);
+          break;
+        case 'mail_count':
+          valA = parseInt(a.dataset.mailCount, 10);
+          valB = parseInt(b.dataset.mailCount, 10);
+          break;
+        case 'status':
+          valA = a.dataset.status;
+          valB = b.dataset.status;
+          break;
+        default:
+          return 0;
+      }
+      if (typeof valA === 'string') {
+        return asc ? valA.localeCompare(valB) : valB.localeCompare(valA);
+      }
+      return asc ? valA - valB : valB - valA;
+    });
+
+    rows.forEach(row => tbody.appendChild(row));
+  }
+
+  document.querySelectorAll('th.sortable').forEach(th => {
+    th.addEventListener('click', () => {
+      const column = th.dataset.sort;
+      document.querySelectorAll('th.sortable').forEach(h => h.classList.remove('sort-asc', 'sort-desc'));
+      
+      if (currentSort.column === column) {
+        currentSort.asc = !currentSort.asc;
+      } else {
+        currentSort.column = column;
+        currentSort.asc = true;
+      }
+      
+      th.classList.add(currentSort.asc ? 'sort-asc' : 'sort-desc');
+      sortTable(column, currentSort.asc);
     });
   });
 

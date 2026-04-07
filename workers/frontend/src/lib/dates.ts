@@ -8,7 +8,7 @@ export function formatDate(ms: number): string {
   const days = Math.floor(hours / 24);
   
   if (days > 30) {
-    return date.toLocaleDateString('en-US', { year: 'numeric', month: 'short', day: 'numeric' });
+    return date.toLocaleDateString(undefined, { year: 'numeric', month: 'short', day: 'numeric' });
   } else if (days > 0) {
     return `${days}d ago`;
   } else if (hours > 0) {
