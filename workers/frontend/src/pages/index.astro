@@ -13,10 +13,7 @@ let userEmail = 'unknown';
 try {
   const payload = await verifyAccessToken(Astro.request, env);
   userEmail = payload.email;
-} catch (error) {
-  console.log('[INDEX] Auth verification failed:', error);
-  console.log('[INDEX] Error message:', error instanceof Error ? error.message : String(error));
-  console.log('[INDEX] Request headers:', Object.fromEntries(Astro.request.headers.entries()));
+} catch {
   return new Response('Unauthorized', { status: 401 });
 }
 
