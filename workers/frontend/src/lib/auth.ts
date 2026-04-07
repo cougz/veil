@@ -14,9 +14,18 @@ export async function verifyAccessToken(
   request: Request,
   env: { CF_ACCESS_TEAM_DOMAIN: string; CF_ACCESS_AUD: string }
 ): Promise<CFAccessPayload> {
-  const token = request.headers.get('Cf-Access-Jwt-Assertion');
+  let token = request.headers.get('Cf-Access-Jwt-Assertion');
+  
   if (!token) {
-    throw new Error('Missing Cf-Access-Jwt-Assertion header');
+    const cookie = request.headers.get('Cookie') ?? '';
+    const match = cookie.match(/CF_Authorization=([^;]+)/);
+    if (match) {
+      token = decodeURIComponent(match[1]);
+    }
+  }
+  
+  if (!token) {
+    throw new Error('Missing CF Access token');
   }
 
   const JWKS = createRemoteJWKSet(
