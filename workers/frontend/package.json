@@ -9,7 +9,8 @@
   },
   "dependencies": {
     "astro": "^5.0.0",
-    "@astrojs/cloudflare": "^12.0.0"
+    "@astrojs/cloudflare": "^12.0.0",
+    "jose": "^5.0.0"
   },
   "devDependencies": {
     "@cloudflare/workers-types": "^4.20250401.0"

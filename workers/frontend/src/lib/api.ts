@@ -1,8 +1,16 @@
-import { isAuthenticated } from './auth';
+import { verifyAccessToken } from './auth';
 import { json } from './json';
 
-export async function isAuthorized(request: Request, env: { API_TOKEN: string }): Promise<boolean> {
-  return isAuthenticated(request, env);
+export async function isAuthorized(
+  request: Request,
+  env: { CF_ACCESS_TEAM_DOMAIN: string; CF_ACCESS_AUD: string }
+): Promise<boolean> {
+  try {
+    await verifyAccessToken(request, env);
+    return true;
+  } catch {
+    return false;
+  }
 }
 
 export function unauthorized(): Response {

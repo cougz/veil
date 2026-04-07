@@ -11,4 +11,10 @@ enabled = true
 [[d1_databases]]
 binding = "DB"
 database_name = "veil-db"
-database_id = "17141d5e-9cbc-4dce-ab8e-313c5ef96960"
+database_id = "REPLACE_WITH_YOUR_D1_ID"
+
+# Set these as Secrets in the Cloudflare dashboard (Workers → Settings → Variables and Secrets):
+# CF_ACCESS_TEAM_DOMAIN = "https://yourteam.cloudflareaccess.com"
+# CF_ACCESS_AUD         = "your-application-audience-tag"
+# DOMAIN                = "yourdomain.com"
+# APP_NAME, APP_DESCRIPTION, ACCENT_COLOR (optional)

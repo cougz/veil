@@ -1,12 +1,16 @@
 ---
 import Layout from '../layouts/Layout.astro';
-import { isAuthenticated } from '../lib/auth';
+import { verifyAccessToken } from '../lib/auth';
 
 const env = Astro.locals.runtime.env;
 const APP_NAME: string = env.APP_NAME ?? 'Veil';
 const ACCENT_COLOR: string = env.ACCENT_COLOR ?? '#6d83f2';
 
-if (!(await isAuthenticated(Astro.request, env))) {
+let userEmail = 'unknown';
+try {
+  const payload = await verifyAccessToken(Astro.request, env);
+  userEmail = payload.email;
+} catch {
   return Astro.redirect('/login', 302);
 }
 
@@ -27,12 +31,15 @@ for (const row of settingsRows as { key: string; value: string }[]) {
 
 <Layout title={`Settings — ${APP_NAME}`} accentColor={ACCENT_COLOR}>
   <div class="settings-header">
-    <a href="/" class="back-link">
-      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-        <path d="M19 12H5M5 12L12 19M5 12L12 5" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
-      </svg>
-      Back to Aliases
-    </a>
+    <div class="header-top-row">
+      <a href="/" class="back-link">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+          <path d="M19 12H5M5 12L12 19M5 12L12 5" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+        </svg>
+        Back to Aliases
+      </a>
+      <span class="user-badge">{userEmail}</span>
+    </div>
     <h1>Settings</h1>
     <p class="settings-subtitle">Configure email forwarding and rejection behavior</p>
   </div>
@@ -235,9 +242,24 @@ for (const row of settingsRows as { key: string; value: string }[]) {
   .info-box strong {
     color: var(--text-primary);
   }
+
+  .header-top-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 1rem;
+  }
+
+  .user-badge {
+    color: var(--text-muted);
+    font-size: 0.875rem;
+    padding: 0.5rem 1rem;
+    background: var(--bg-secondary);
+    border: 1px solid var(--border-color);
+    border-radius: var(--radius-md);
+  }
 </style>
 
-<div id="auth-token" data-token={Astro.locals.runtime.env.API_TOKEN} style="display:none"></div>
 <script>
   const form = document.getElementById('settings-form');
   const saveBtn = document.getElementById('save-btn');

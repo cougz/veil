@@ -1,11 +1,4 @@
 ---
-import { clearSessionCookie } from '../lib/auth';
-
-return new Response(null, {
-  status: 302,
-  headers: {
-    'Location': '/login',
-    'Set-Cookie': clearSessionCookie(),
-  },
-});
+const env = Astro.locals.runtime.env;
+return Astro.redirect(`${env.CF_ACCESS_TEAM_DOMAIN}/cdn-cgi/access/logout`, 302);
 ---
