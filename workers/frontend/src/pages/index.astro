@@ -14,7 +14,7 @@ try {
   const payload = await verifyAccessToken(Astro.request, env);
   userEmail = payload.email;
 } catch {
-  return Astro.redirect('/login', 302);
+  return Astro.redirect('/', 302);
 }
 
 const db = env.DB;

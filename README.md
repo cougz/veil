@@ -9,7 +9,7 @@ Veil is a self-hosted, open-source email alias relay built entirely on Cloudflar
 
 ## Features
 
-- **Session-based authentication** - Secure login with HttpOnly cookies (no tokens in browser)
+- **Cloudflare Access authentication** - Secure login via CF Access with JWT verification
 - **Configurable settings** - Set forwarding address and rejection message via dashboard
 - **Expiring aliases** - Set optional expiration dates for temporary addresses
 - **Rate limiting** - 100 emails/minute per sender to prevent abuse
@@ -119,7 +119,8 @@ In the Cloudflare dashboard, go to **Worker → Settings → Variables and Secre
 
 | Variable | Type | Required | Description |
 |---|---|---|---|
-| `API_TOKEN` | **Secret** | ✅ | Password for dashboard login (generate with `openssl rand -hex 32`) |
+| `CF_ACCESS_TEAM_DOMAIN` | **Secret** | ✅ | Your CF Access team URL (e.g., `https://yourteam.cloudflareaccess.com`) |
+| `CF_ACCESS_AUD` | **Secret** | ✅ | Your CF Access application audience tag |
 | `DOMAIN` | **Secret** | ✅ | The relay domain e.g. `yourdomain.com` |
 | `APP_NAME` | **Secret** | ❌ | Defaults to `Veil` |
 | `APP_DESCRIPTION` | **Secret** | ❌ | Defaults to the tagline above |
@@ -127,14 +128,25 @@ In the Cloudflare dashboard, go to **Worker → Settings → Variables and Secre
 
 > **Note**: `FORWARD_TO` and `REJECT_MESSAGE` can be configured via the Settings page in the dashboard. Settings stored in the database take precedence over environment variables.
 
-### Step 6: Bind D1 database to both Workers
+### Step 6: Configure Cloudflare Access
+
+Protect your frontend Worker with Cloudflare Access:
+
+1. Go to **Zero Trust → Access → Applications**
+2. Add an application for your frontend Worker URL
+3. Create an access policy (e.g., email domain, specific emails, or GitHub groups)
+4. Note the **Application Audience (AUD) tag** from the application settings
+5. Set the `CF_ACCESS_AUD` variable in your frontend Worker to this value
+6. Set `CF_ACCESS_TEAM_DOMAIN` to your team URL (e.g., `https://yourteam.cloudflareaccess.com`)
+
+### Step 7: Bind D1 database to both Workers
 
 In the Cloudflare dashboard, go to **Worker → Settings → Bindings → D1 Database** for each Worker:
 
 - Binding name: `DB`
 - D1 Database: `veil-db`
 
-### Step 7: Configure Email Routing
+### Step 8: Configure Email Routing
 
 1. Go to your domain → **Email → Email Routing**
 2. Add a **Destination address** - enter your `FORWARD_TO` address and click Verify
@@ -145,7 +157,7 @@ In the Cloudflare dashboard, go to **Worker → Settings → Bindings → D1 Dat
 
 > **Note**: The destination address must be verified before email forwarding will work. You'll get a "destination address not verified" error if you skip this step.
 
-### Step 8: Deploy
+### Step 9: Deploy
 
 After completing Steps 4-7, trigger your first deployment:
 
@@ -156,10 +168,10 @@ After completing Steps 4-7, trigger your first deployment:
 
 Both Workers will automatically rebuild and redeploy on every push to `main` — but only if files within their respective watch paths changed.
 
-### Step 9: Verify deployment
+### Step 10: Verify deployment
 
-1. Visit your frontend Worker URL — you should see the Veil login page
-2. Log in with your `API_TOKEN`
+1. Visit your frontend Worker URL — you should be prompted to authenticate via Cloudflare Access
+2. After authenticating, you should see the Veil dashboard
 3. Go to **Settings** and configure your forwarding address
 4. Send a test email to `test@yourdomain.com`
 5. Check the dashboard to see the alias appear
@@ -167,8 +179,7 @@ Both Workers will automatically rebuild and redeploy on every push to `main` —
 
 ## Usage
 
-- Visit your frontend Worker's URL to access the dashboard
-- Log in using your `API_TOKEN` as the password
+- Visit your frontend Worker's URL to access the dashboard (requires CF Access authentication)
 - Configure **Forward To** and **Reject Message** in the Settings page
 - Aliases are created automatically when emails arrive (controlled by Cloudflare Email Routing rules)
 - Click **Disable** to block a specific alias (mail is rejected at the Worker level)
