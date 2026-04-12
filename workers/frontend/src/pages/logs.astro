@@ -52,7 +52,7 @@ const totalPages = Math.ceil(total / limit);
 const errorCount = (countResult as any)?.error_count ?? 0;
 ---
 
-<Layout title={`Logs — ${APP_NAME}`} accentColor={ACCENT_COLOR}>
+<Layout title={`Logs | ${APP_NAME}`} accentColor={ACCENT_COLOR}>
   <div class="page-header">
     <a href="/" class="back-link">
       <svg width="20" height="20" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
@@ -146,9 +146,9 @@ const errorCount = (countResult as any)?.error_count ?? 0;
               <td>
                 <span class={`event-badge event-${log.event}`}>{log.event}</span>
               </td>
-              <td class="log-alias"><code>{log.alias ?? '—'}</code></td>
-              <td class="log-from">{log.from_addr ?? '—'}</td>
-              <td class="log-to">{log.to_addr ?? '—'}</td>
+              <td class="log-alias"><code>{log.alias ?? '-'}</code></td>
+              <td class="log-from">{log.from_addr ?? '-'}</td>
+              <td class="log-to">{log.to_addr ?? '-'}</td>
               <td class="log-message">
                 <span class="message-text">{log.message ?? ''}</span>
                 {log.details && (

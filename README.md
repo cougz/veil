@@ -7,6 +7,8 @@ Veil is a self-hosted, open-source email alias relay built entirely on Cloudflar
 1. **Email Worker**: receives all inbound mail via Cloudflare Email Routing, enforces alias rules against a D1 database, and forwards allowed mail to your real inbox.
 2. **Frontend Worker**: an Astro SSR application that serves the alias management dashboard and exposes a REST API for alias CRUD operations.
 
+![Veil Dashboard](dash.png)
+
 ## Features
 
 - **Cloudflare Access authentication** - Secure login via CF Access with JWT verification
@@ -107,7 +109,7 @@ This ensures the email worker only rebuilds when files in `workers/email-worker/
 3. Add a build watch path:
    - **Include**: `workers/frontend/**`
 
-The frontend's `wrangler.toml` includes an `assets` directive that ensures static files (CSS, JS, fonts) are uploaded alongside the worker. This is critical — without it, the dashboard will load as a blank page.
+The frontend's `wrangler.toml` includes an `assets` directive that ensures static files (CSS, JS, fonts) are uploaded alongside the worker. This is critical; without it, the dashboard will load as a blank page.
 
 Both workers have **Observability** enabled via `wrangler.toml`, which automatically collects logs, errors, and invocation data. You can view logs in the dashboard under **Worker → Observability**.
 
@@ -175,11 +177,11 @@ After completing Steps 4-7, trigger your first deployment:
 3. Wait for both workers to deploy successfully
 4. Visit your frontend Worker's URL (found in the dashboard under **Preview** or **Triggers**)
 
-Both Workers will automatically rebuild and redeploy on every push to `main` — but only if files within their respective watch paths changed.
+Both Workers will automatically rebuild and redeploy on every push to `main`, but only if files within their respective watch paths changed.
 
 ### Step 10: Verify deployment
 
-1. Visit your frontend Worker URL — you should be prompted to authenticate via Cloudflare Access
+1. Visit your frontend Worker URL. You should be prompted to authenticate via Cloudflare Access
 2. After authenticating, you should see the Veil dashboard
 3. Go to **Settings** and configure your forwarding address
 4. Send a test email to `test@yourdomain.com`
