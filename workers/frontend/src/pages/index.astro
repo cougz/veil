@@ -92,11 +92,11 @@ const blocked = aliases.filter((a: any) => a.status === 'blocked').length;
     </div>
     <div class="stat-card">
       <span class="stat-number">{active}</span>
-      <span class="stat-label">Active</span>
+      <span class="stat-label">Enabled</span>
     </div>
     <div class="stat-card">
       <span class="stat-number">{blocked}</span>
-      <span class="stat-label">Blocked</span>
+      <span class="stat-label">Disabled</span>
     </div>
   </div>
 
@@ -104,8 +104,8 @@ const blocked = aliases.filter((a: any) => a.status === 'blocked').length;
     <span class="options-label">Filter:</span>
     <div class="pills">
       <button class="pill active" data-filter="all">All <span class="pill-count">{total}</span></button>
-      <button class="pill" data-filter="active">Active <span class="pill-count">{active}</span></button>
-      <button class="pill" data-filter="blocked">Blocked <span class="pill-count">{blocked}</span></button>
+      <button class="pill" data-filter="active">Enabled <span class="pill-count">{active}</span></button>
+      <button class="pill" data-filter="blocked">Disabled <span class="pill-count">{blocked}</span></button>
     </div>
     <input type="text" class="search-input" id="alias-search" placeholder="Search aliases..." />
     <a href="/api/aliases/export" class="btn-export" download="aliases.csv">
@@ -142,7 +142,7 @@ const blocked = aliases.filter((a: any) => a.status === 'blocked').length;
               <td class="alias-count">{alias.mail_count}</td>
               <td>
                 <span class={`badge ${alias.status === 'active' ? 'badge-active' : 'badge-blocked'}`}>
-                  {alias.status}
+                  {alias.status === 'active' ? 'Enabled' : 'Disabled'}
                 </span>
               </td>
               <td class="alias-actions">
@@ -843,7 +843,7 @@ const blocked = aliases.filter((a: any) => a.status === 'blocked').length;
       btn.textContent = newStatus === 'active' ? 'Disable' : 'Enable';
       const badge = row.querySelector('.badge');
       badge.className = `badge ${newStatus === 'active' ? 'badge-active' : 'badge-blocked'}`;
-      badge.textContent = newStatus;
+      badge.textContent = newStatus === 'active' ? 'Enabled' : 'Disabled';
     } else {
       btn.textContent = currentStatus === 'active' ? 'Disable' : 'Enable';
       alert('Failed to update alias.');
