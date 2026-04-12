@@ -198,8 +198,6 @@ const blocked = aliases.filter((a: any) => a.status === 'blocked').length;
 
   .user-menu.open .user-menu-trigger {
     border-color: var(--accent);
-    border-bottom-left-radius: 0;
-    border-bottom-right-radius: 0;
     background: var(--bg-tertiary);
   }
 
@@ -235,20 +233,17 @@ const blocked = aliases.filter((a: any) => a.status === 'blocked').length;
   }
 
   .user-menu-dropdown {
-    position: absolute;
-    top: 100%;
-    right: 0;
+    position: fixed;
     width: 220px;
     background: var(--bg-secondary);
     border: 1px solid var(--border-color);
-    border-top: none;
-    border-radius: 0 0 var(--radius-md) var(--radius-md);
+    border-radius: var(--radius-md);
     padding: 0.25rem;
     opacity: 0;
     visibility: hidden;
     transform: translateY(-4px);
     transition: all var(--transition);
-    z-index: 100;
+    z-index: 1000;
   }
 
   .user-menu.open .user-menu-dropdown {
@@ -702,10 +697,19 @@ const blocked = aliases.filter((a: any) => a.status === 'blocked').length;
 <script>
   const userMenu = document.getElementById('user-menu-trigger')?.parentElement;
   const userMenuTrigger = document.getElementById('user-menu-trigger');
+  const userMenuDropdown = document.getElementById('user-menu-dropdown');
+
+  function positionDropdown() {
+    if (!userMenuTrigger || !userMenuDropdown) return;
+    const rect = userMenuTrigger.getBoundingClientRect();
+    userMenuDropdown.style.top = `${rect.bottom + 4}px`;
+    userMenuDropdown.style.left = `${rect.right - 220}px`;
+  }
 
   userMenuTrigger?.addEventListener('click', (e) => {
     e.stopPropagation();
     userMenu?.classList.toggle('open');
+    if (userMenu?.classList.contains('open')) positionDropdown();
   });
 
   document.addEventListener('click', (e) => {
