@@ -1,13 +1,13 @@
 # Veil
 
+![Veil Dashboard](dash.png)
+
 **Wildcard email aliasing on Cloudflare Workers. Forward, filter, and burn addresses without exposing your inbox.**
 
 Veil is a self-hosted, open-source email alias relay built entirely on Cloudflare's developer platform. It consists of two Cloudflare Workers deployed from a single GitHub monorepo via Workers Builds:
 
 1. **Email Worker**: receives all inbound mail via Cloudflare Email Routing, enforces alias rules against a D1 database, and forwards allowed mail to your real inbox.
 2. **Frontend Worker**: an Astro SSR application that serves the alias management dashboard and exposes a REST API for alias CRUD operations.
-
-![Veil Dashboard](dash.png)
 
 ## Features
 
