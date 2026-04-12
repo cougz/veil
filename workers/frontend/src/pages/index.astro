@@ -832,8 +832,11 @@ const emailStats = JSON.stringify({
   function moveIndicator(group: HTMLElement, activeBtn: HTMLElement) {
     const indicator = group.querySelector('.seg-indicator') as HTMLElement;
     if (!indicator || !activeBtn) return;
-    indicator.style.width = `${activeBtn.offsetWidth}px`;
-    indicator.style.transform = `translateX(${activeBtn.offsetLeft - 2}px)`;
+    const groupRect = group.getBoundingClientRect();
+    const btnRect = activeBtn.getBoundingClientRect();
+    indicator.style.left = `${btnRect.left - groupRect.left}px`;
+    indicator.style.width = `${btnRect.width}px`;
+    indicator.style.transform = 'none';
   }
 
   function initSegGroup(groupId: string, onActivate: (btn: HTMLElement) => void) {
