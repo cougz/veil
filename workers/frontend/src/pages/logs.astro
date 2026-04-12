@@ -1,0 +1,633 @@
+---
+import Layout from '../layouts/Layout.astro';
+import { verifyAccessToken } from '../lib/auth';
+import { formatDate } from '../lib/dates';
+
+const env = Astro.locals.runtime.env;
+const APP_NAME: string     = env.APP_NAME     ?? 'Veil';
+const ACCENT_COLOR: string = env.ACCENT_COLOR ?? '#6d83f2';
+
+let userEmail = 'unknown';
+try {
+  const payload = await verifyAccessToken(Astro.request, env);
+  userEmail = payload.email;
+} catch {
+  return new Response('Unauthorized', { status: 401 });
+}
+
+const db = env.DB;
+const url = new URL(Astro.request.url);
+
+const page  = parseInt(url.searchParams.get('page') ?? '1', 10) || 1;
+const limit = 50;
+const level = url.searchParams.get('level') ?? '';
+const event = url.searchParams.get('event') ?? '';
+const search = url.searchParams.get('search') ?? '';
+
+const conditions: string[] = [];
+const params: any[] = [];
+
+if (level) { conditions.push('level = ?'); params.push(level); }
+if (event) { conditions.push('event = ?'); params.push(event); }
+if (search) {
+  conditions.push('(alias LIKE ? OR from_addr LIKE ? OR message LIKE ?)');
+  const pattern = `%${search}%`;
+  params.push(pattern, pattern, pattern);
+}
+
+const where = conditions.length > 0 ? `WHERE ${conditions.join(' AND ')}` : '';
+
+const countResult = await db
+  .prepare(`SELECT COUNT(*) as total FROM logs ${where}`)
+  .bind(...params)
+  .first();
+
+const { results: logs } = await db
+  .prepare(`SELECT * FROM logs ${where} ORDER BY timestamp DESC LIMIT ? OFFSET ?`)
+  .bind(...params, limit, (page - 1) * limit)
+  .all();
+
+const total = (countResult as any)?.total ?? 0;
+const totalPages = Math.ceil(total / limit);
+const errorCount = (countResult as any)?.error_count ?? 0;
+---
+
+<Layout title={`Logs — ${APP_NAME}`} accentColor={ACCENT_COLOR}>
+  <div class="page-header">
+    <a href="/" class="back-link">
+      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+        <path d="M19 12H5M5 12L12 19M5 12L12 5" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+      </svg>
+      Back to Aliases
+    </a>
+    <span class="user-badge">{userEmail}</span>
+  </div>
+
+  <div class="logs-header">
+    <h1>Logs</h1>
+    <p class="logs-subtitle">Email delivery events and errors</p>
+  </div>
+
+  <div class="options-row">
+    <span class="options-label">Filter:</span>
+    <div class="pills">
+      <a href="/logs" class={`pill ${!level ? 'active' : ''}`}>All</a>
+      <a href="/logs?level=error" class={`pill ${level === 'error' ? 'active' : ''}`}>Errors</a>
+      <a href="/logs?level=warn" class={`pill ${level === 'warn' ? 'active' : ''}`}>Warnings</a>
+      <a href="/logs?level=info" class={`pill ${level === 'info' ? 'active' : ''}`}>Info</a>
+    </div>
+    <input type="text" class="search-input" id="log-search" placeholder="Search logs..." value={search} />
+    <button class="btn-clear" id="clear-logs-btn" title="Clear all logs">
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <polyline points="3 6 5 6 21 6"></polyline>
+        <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path>
+      </svg>
+      Clear Logs
+    </button>
+  </div>
+
+  <section class="table-section">
+    <div class="table-wrapper">
+      <table class="logs-table" id="logs-table">
+        <thead>
+          <tr>
+            <th>Time</th>
+            <th>Level</th>
+            <th>Event</th>
+            <th>Alias</th>
+            <th>From</th>
+            <th>To</th>
+            <th>Message</th>
+          </tr>
+        </thead>
+        <tbody id="logs-tbody">
+          {logs.map((log: any) => (
+            <tr class="log-row" data-level={log.level} data-event={log.event}>
+              <td class="log-time" title={new Date(log.timestamp).toLocaleString()}>{formatDate(log.timestamp)}</td>
+              <td>
+                <span class={`level-badge level-${log.level}`}>{log.level}</span>
+              </td>
+              <td>
+                <span class={`event-badge event-${log.event}`}>{log.event}</span>
+              </td>
+              <td class="log-alias"><code>{log.alias ?? '—'}</code></td>
+              <td class="log-from">{log.from_addr ?? '—'}</td>
+              <td class="log-to">{log.to_addr ?? '—'}</td>
+              <td class="log-message">
+                <span class="message-text">{log.message ?? ''}</span>
+                {log.details && (
+                  <button class="btn-details" data-details={log.details}>details</button>
+                )}
+              </td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
+      {logs.length === 0 && (
+        <div class="empty-state">
+          No logs found. Logs will appear here as emails are received.
+        </div>
+      )}
+    </div>
+  </section>
+
+  {totalPages > 1 && (
+    <div class="pagination">
+      {page > 1 ? (
+        <a class="page-btn" href={`/logs?page=${page - 1}&level=${level}&event=${event}&search=${search}`}>Previous</a>
+      ) : (
+        <span class="page-btn disabled">Previous</span>
+      )}
+      <span class="page-info">Page {page} of {totalPages} ({total} entries)</span>
+      {page < totalPages ? (
+        <a class="page-btn" href={`/logs?page=${page + 1}&level=${level}&event=${event}&search=${search}`}>Next</a>
+      ) : (
+        <span class="page-btn disabled">Next</span>
+      )}
+    </div>
+  )}
+
+  <div class="details-modal" id="details-modal">
+    <div class="details-modal-content">
+      <div class="details-modal-header">
+        <span>Log Details</span>
+        <button class="details-modal-close" id="details-modal-close">&times;</button>
+      </div>
+      <pre class="details-json" id="details-json"></pre>
+    </div>
+  </div>
+</Layout>
+
+<style>
+  .page-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 1rem;
+  }
+
+  .back-link {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.5rem;
+    color: var(--text-muted);
+    text-decoration: none;
+    font-size: 0.875rem;
+    transition: color var(--transition);
+  }
+
+  .back-link:hover {
+    color: var(--accent);
+  }
+
+  .user-badge {
+    color: var(--text-muted);
+    font-size: 0.875rem;
+    padding: 0.5rem 1rem;
+    background: var(--bg-secondary);
+    border: 1px solid var(--border-color);
+    border-radius: var(--radius-md);
+  }
+
+  .logs-header {
+    margin-bottom: 1.5rem;
+  }
+
+  h1 {
+    font-size: 2rem;
+    font-weight: 700;
+    color: var(--text-primary);
+    margin-bottom: 0.5rem;
+    background: linear-gradient(135deg, #ffffff 0%, var(--accent) 100%);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+  }
+
+  .logs-subtitle {
+    color: var(--text-muted);
+    font-size: 1rem;
+  }
+
+  .options-row {
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+    margin-bottom: 1.5rem;
+    flex-wrap: wrap;
+  }
+
+  .options-label {
+    color: var(--text-muted);
+    font-size: 0.875rem;
+    font-weight: 500;
+  }
+
+  .pills {
+    display: flex;
+    gap: 0.5rem;
+    flex-wrap: wrap;
+  }
+
+  .pill {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    background: transparent;
+    border: 1px solid var(--border-color);
+    color: var(--text-secondary);
+    padding: 0.5rem 1rem;
+    border-radius: 50px;
+    font-size: 0.875rem;
+    transition: all var(--transition);
+    text-decoration: none;
+  }
+
+  .pill:hover {
+    border-color: var(--accent);
+    color: var(--accent);
+  }
+
+  .pill.active {
+    background: var(--accent);
+    border-color: var(--accent);
+    color: white;
+  }
+
+  .search-input {
+    margin-left: auto;
+    padding: 0.5rem 1rem;
+    border: 1px solid var(--border-color);
+    border-radius: var(--radius-sm);
+    background: var(--bg-secondary);
+    color: var(--text-primary);
+    font-size: 0.875rem;
+    min-width: 200px;
+    transition: all var(--transition);
+  }
+
+  .search-input:focus {
+    outline: none;
+    border-color: var(--accent);
+    box-shadow: 0 0 0 2px color-mix(in srgb, var(--accent) 20%, transparent);
+  }
+
+  .search-input::placeholder {
+    color: var(--text-muted);
+  }
+
+  .btn-clear {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.4rem;
+    padding: 0.5rem 1rem;
+    background: transparent;
+    border: 1px solid var(--border-color);
+    color: var(--text-muted);
+    border-radius: var(--radius-sm);
+    font-size: 0.8rem;
+    font-weight: 500;
+    transition: all var(--transition);
+    white-space: nowrap;
+  }
+
+  .btn-clear:hover {
+    border-color: #ef4444;
+    color: #f87171;
+    background: color-mix(in srgb, #ef4444 10%, transparent);
+  }
+
+  .table-section {
+    margin-bottom: 2rem;
+  }
+
+  .table-wrapper {
+    background: var(--bg-secondary);
+    border: 1px solid var(--border-color);
+    border-radius: var(--radius-lg);
+    overflow: hidden;
+    overflow-x: auto;
+  }
+
+  .logs-table {
+    width: 100%;
+    border-collapse: collapse;
+    min-width: 900px;
+  }
+
+  .logs-table th {
+    background: var(--bg-tertiary);
+    color: var(--text-muted);
+    font-size: 0.75rem;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    padding: 1rem 1rem;
+    text-align: left;
+    border-bottom: 1px solid var(--border-color);
+  }
+
+  .logs-table td {
+    padding: 0.75rem 1rem;
+    border-bottom: 1px solid var(--border-color);
+    vertical-align: middle;
+    font-size: 0.875rem;
+  }
+
+  .log-row {
+    transition: background var(--transition);
+  }
+
+  .log-row:hover {
+    background: var(--bg-tertiary);
+  }
+
+  .log-row:last-child td {
+    border-bottom: none;
+  }
+
+  .log-time {
+    color: var(--text-muted);
+    white-space: nowrap;
+    font-size: 0.85rem;
+  }
+
+  .log-alias code {
+    color: var(--text-primary);
+    font-weight: 500;
+  }
+
+  .log-from,
+  .log-to {
+    color: var(--text-secondary);
+    font-size: 0.85rem;
+    max-width: 180px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  .log-message {
+    max-width: 280px;
+  }
+
+  .message-text {
+    color: var(--text-secondary);
+    font-size: 0.85rem;
+  }
+
+  .level-badge {
+    display: inline-block;
+    padding: 0.2rem 0.6rem;
+    border-radius: 50px;
+    font-size: 0.7rem;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+  }
+
+  .level-info {
+    background: color-mix(in srgb, #3b82f6 15%, transparent);
+    color: #60a5fa;
+    border: 1px solid color-mix(in srgb, #3b82f6 30%, transparent);
+  }
+
+  .level-warn {
+    background: color-mix(in srgb, #eab308 15%, transparent);
+    color: #facc15;
+    border: 1px solid color-mix(in srgb, #eab308 30%, transparent);
+  }
+
+  .level-error {
+    background: color-mix(in srgb, #ef4444 15%, transparent);
+    color: #f87171;
+    border: 1px solid color-mix(in srgb, #ef4444 30%, transparent);
+  }
+
+  .event-badge {
+    display: inline-block;
+    padding: 0.2rem 0.6rem;
+    border-radius: 50px;
+    font-size: 0.7rem;
+    font-weight: 500;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+    background: var(--bg-tertiary);
+    color: var(--text-secondary);
+    border: 1px solid var(--border-color);
+  }
+
+  .event-forwarded {
+    background: color-mix(in srgb, #22c55e 12%, transparent);
+    color: #4ade80;
+    border-color: color-mix(in srgb, #22c55e 25%, transparent);
+  }
+
+  .event-blocked {
+    background: color-mix(in srgb, #f97316 12%, transparent);
+    color: #fb923c;
+    border-color: color-mix(in srgb, #f97316 25%, transparent);
+  }
+
+  .event-expired {
+    background: color-mix(in srgb, #a855f7 12%, transparent);
+    color: #c084fc;
+    border-color: color-mix(in srgb, #a855f7 25%, transparent);
+  }
+
+  .event-rate_limited {
+    background: color-mix(in srgb, #eab308 12%, transparent);
+    color: #facc15;
+    border-color: color-mix(in srgb, #eab308 25%, transparent);
+  }
+
+  .event-error {
+    background: color-mix(in srgb, #ef4444 12%, transparent);
+    color: #f87171;
+    border-color: color-mix(in srgb, #ef4444 25%, transparent);
+  }
+
+  .event-config_error {
+    background: color-mix(in srgb, #ef4444 12%, transparent);
+    color: #f87171;
+    border-color: color-mix(in srgb, #ef4444 25%, transparent);
+  }
+
+  .btn-details {
+    display: inline-block;
+    margin-left: 0.5rem;
+    padding: 0.1rem 0.4rem;
+    background: transparent;
+    border: 1px solid var(--border-color);
+    color: var(--text-muted);
+    border-radius: var(--radius-sm);
+    font-size: 0.7rem;
+    cursor: pointer;
+    transition: all var(--transition);
+  }
+
+  .btn-details:hover {
+    border-color: var(--accent);
+    color: var(--accent);
+  }
+
+  .pagination {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 1rem;
+    margin-top: 1.5rem;
+  }
+
+  .page-btn {
+    display: inline-flex;
+    padding: 0.5rem 1rem;
+    background: var(--bg-secondary);
+    border: 1px solid var(--border-color);
+    color: var(--text-secondary);
+    border-radius: var(--radius-sm);
+    font-size: 0.875rem;
+    text-decoration: none;
+    transition: all var(--transition);
+  }
+
+  .page-btn:hover:not(.disabled) {
+    border-color: var(--accent);
+    color: var(--accent);
+  }
+
+  .page-btn.disabled {
+    opacity: 0.4;
+    cursor: not-allowed;
+    pointer-events: none;
+  }
+
+  .page-info {
+    color: var(--text-muted);
+    font-size: 0.85rem;
+  }
+
+  .empty-state {
+    text-align: center;
+    padding: 3rem 1rem;
+    color: var(--text-muted);
+    font-size: 1rem;
+  }
+
+  .details-modal {
+    display: none;
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: rgba(0, 0, 0, 0.7);
+    z-index: 1000;
+    justify-content: center;
+    align-items: center;
+  }
+
+  .details-modal.visible {
+    display: flex;
+  }
+
+  .details-modal-content {
+    background: var(--bg-secondary);
+    border: 1px solid var(--border-color);
+    border-radius: var(--radius-lg);
+    max-width: 700px;
+    width: 90%;
+    max-height: 80vh;
+    overflow: auto;
+  }
+
+  .details-modal-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 1rem 1.25rem;
+    border-bottom: 1px solid var(--border-color);
+    font-weight: 600;
+    color: var(--text-primary);
+  }
+
+  .details-modal-close {
+    background: none;
+    border: none;
+    color: var(--text-muted);
+    font-size: 1.5rem;
+    cursor: pointer;
+    padding: 0 0.25rem;
+    line-height: 1;
+  }
+
+  .details-modal-close:hover {
+    color: var(--text-primary);
+  }
+
+  .details-json {
+    padding: 1.25rem;
+    margin: 0;
+    font-family: var(--font-mono);
+    font-size: 0.85rem;
+    color: var(--text-secondary);
+    white-space: pre-wrap;
+    word-break: break-all;
+  }
+</style>
+
+<script>
+  const searchInput = document.getElementById('log-search') as HTMLInputElement;
+  const currentUrl = new URL(window.location.href);
+
+  let debounceTimer: ReturnType<typeof setTimeout>;
+  searchInput?.addEventListener('input', () => {
+    clearTimeout(debounceTimer);
+    debounceTimer = setTimeout(() => {
+      const url = new URL(window.location.href);
+      url.searchParams.set('search', searchInput.value);
+      url.searchParams.delete('page');
+      window.location.href = url.toString();
+    }, 400);
+  });
+
+  const clearBtn = document.getElementById('clear-logs-btn');
+  clearBtn?.addEventListener('click', async () => {
+    if (!confirm('Clear all logs? This cannot be undone.')) return;
+    clearBtn.setAttribute('disabled', 'true');
+    try {
+      const res = await fetch('/api/logs', { method: 'DELETE' });
+      if (res.ok) {
+        window.location.reload();
+      } else {
+        alert('Failed to clear logs.');
+      }
+    } catch {
+      alert('Network error.');
+    } finally {
+      clearBtn.removeAttribute('disabled');
+    }
+  });
+
+  document.querySelectorAll('.btn-details').forEach(btn => {
+    btn.addEventListener('click', () => {
+      const raw = (btn as HTMLElement).dataset.details;
+      if (!raw) return;
+      try {
+        const parsed = JSON.parse(raw);
+        document.getElementById('details-json')!.textContent = JSON.stringify(parsed, null, 2);
+        document.getElementById('details-modal')!.classList.add('visible');
+      } catch {}
+    });
+  });
+
+  document.getElementById('details-modal-close')?.addEventListener('click', () => {
+    document.getElementById('details-modal')?.classList.remove('visible');
+  });
+
+  document.getElementById('details-modal')?.addEventListener('click', (e) => {
+    if (e.target === document.getElementById('details-modal')) {
+      document.getElementById('details-modal')?.classList.remove('visible');
+    }
+  });
+</script>

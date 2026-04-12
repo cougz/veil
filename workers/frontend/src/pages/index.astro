@@ -30,6 +30,7 @@ const blocked = aliases.filter((a: any) => a.status === 'blocked').length;
 <Layout title={APP_NAME} accentColor={ACCENT_COLOR}>
 <div class="page-header">
     <span class="user-badge">{userEmail}</span>
+    <a href="/logs" class="header-link">Logs</a>
     <a href={`${env.CF_ACCESS_TEAM_DOMAIN}/cdn-cgi/access/logout`} class="header-link">Logout</a>
     <a href="/settings" class="header-link">Settings</a>
   </div>

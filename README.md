@@ -68,6 +68,15 @@ Run locally (once, from the repo root):
 wrangler d1 execute veil-db --file=./schema.sql
 ```
 
+If you are upgrading from a previous version without the `logs` table, run:
+
+```bash
+wrangler d1 execute veil-db --command="CREATE TABLE IF NOT EXISTS logs (id INTEGER PRIMARY KEY AUTOINCREMENT, timestamp INTEGER NOT NULL, level TEXT NOT NULL DEFAULT 'info', event TEXT NOT NULL, alias TEXT, from_addr TEXT, to_addr TEXT, message TEXT, details TEXT);"
+wrangler d1 execute veil-db --command="CREATE INDEX IF NOT EXISTS idx_logs_timestamp ON logs(timestamp DESC);"
+wrangler d1 execute veil-db --command="CREATE INDEX IF NOT EXISTS idx_logs_level ON logs(level);"
+wrangler d1 execute veil-db --command="CREATE INDEX IF NOT EXISTS idx_logs_event ON logs(event);"
+```
+
 ### Step 4: Configure Workers Builds in the Cloudflare dashboard
 
 Workers Builds automatically deploys your workers when you push to GitHub. Configure each worker:
