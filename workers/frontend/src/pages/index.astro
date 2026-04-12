@@ -31,7 +31,16 @@ const blocked = aliases.filter((a: any) => a.status === 'blocked').length;
 <div class="page-header">
     <span class="user-badge">{userEmail}</span>
     <a href="/logs" class="header-link">Logs</a>
-    <a href={`${env.CF_ACCESS_TEAM_DOMAIN}/cdn-cgi/access/logout`} class="header-link">Logout</a>
+    <a href={`${env.CF_ACCESS_TEAM_DOMAIN}/cdn-cgi/access/logout`} class="btn-logout">
+      <span class="logout-icon">
+        <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/>
+          <polyline points="16 17 21 12 16 7"/>
+          <line x1="21" y1="12" x2="9" y2="12"/>
+        </svg>
+      </span>
+      <span class="logout-text">Logout</span>
+    </a>
     <a href="/settings" class="btn-settings">
       <svg class="settings-icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
         <circle cx="12" cy="12" r="3"/>
@@ -202,6 +211,58 @@ const blocked = aliases.filter((a: any) => a.status === 'blocked').length;
   @keyframes settings-spin {
     0% { transform: rotate(0deg); }
     100% { transform: rotate(360deg); }
+  }
+
+  .btn-logout {
+    display: flex;
+    align-items: center;
+    width: 45px;
+    height: 45px;
+    border-radius: 50%;
+    background: color-mix(in srgb, #ef4444 80%, transparent);
+    box-shadow: 2px 2px 10px rgba(0, 0, 0, 0.2);
+    overflow: hidden;
+    text-decoration: none;
+    transition: all .3s;
+  }
+
+  .btn-logout:hover {
+    width: 125px;
+    border-radius: 40px;
+  }
+
+  .logout-icon {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 100%;
+    transition: all .3s;
+  }
+
+  .btn-logout:hover .logout-icon {
+    width: 30%;
+    padding-left: 14px;
+  }
+
+  .logout-text {
+    position: absolute;
+    right: 0;
+    width: 0;
+    opacity: 0;
+    color: white;
+    font-size: 1rem;
+    font-weight: 600;
+    transition: all .3s;
+  }
+
+  .btn-logout:hover .logout-text {
+    opacity: 1;
+    width: 70%;
+    padding-right: 10px;
+  }
+
+  .btn-logout:active {
+    transform: translate(2px, 2px);
   }
 
   .hero {
