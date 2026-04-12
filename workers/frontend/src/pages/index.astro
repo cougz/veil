@@ -25,6 +25,41 @@ const { results: aliases } = await db
 const total   = aliases.length;
 const active  = aliases.filter((a: any) => a.status === 'active').length;
 const blocked = aliases.filter((a: any) => a.status === 'blocked').length;
+
+const now = Math.floor(Date.now() / 1000);
+const ts7d  = now - 7 * 86400;
+const ts30d = now - 30 * 86400;
+const ts6mo = now - 180 * 86400;
+const ts12mo = now - 365 * 86400;
+
+const emailRow = await db.prepare(`
+  SELECT
+    COUNT(*) as total_all,
+    SUM(CASE WHEN event = 'forwarded' THEN 1 ELSE 0 END) as forwarded_all,
+    SUM(CASE WHEN event = 'blocked' THEN 1 ELSE 0 END) as blocked_all,
+    SUM(CASE WHEN timestamp >= ?1 THEN 1 ELSE 0 END) as total_7d,
+    SUM(CASE WHEN timestamp >= ?1 AND event = 'forwarded' THEN 1 ELSE 0 END) as forwarded_7d,
+    SUM(CASE WHEN timestamp >= ?1 AND event = 'blocked' THEN 1 ELSE 0 END) as blocked_7d,
+    SUM(CASE WHEN timestamp >= ?2 THEN 1 ELSE 0 END) as total_30d,
+    SUM(CASE WHEN timestamp >= ?2 AND event = 'forwarded' THEN 1 ELSE 0 END) as forwarded_30d,
+    SUM(CASE WHEN timestamp >= ?2 AND event = 'blocked' THEN 1 ELSE 0 END) as blocked_30d,
+    SUM(CASE WHEN timestamp >= ?3 THEN 1 ELSE 0 END) as total_6mo,
+    SUM(CASE WHEN timestamp >= ?3 AND event = 'forwarded' THEN 1 ELSE 0 END) as forwarded_6mo,
+    SUM(CASE WHEN timestamp >= ?3 AND event = 'blocked' THEN 1 ELSE 0 END) as blocked_6mo,
+    SUM(CASE WHEN timestamp >= ?4 THEN 1 ELSE 0 END) as total_12mo,
+    SUM(CASE WHEN timestamp >= ?4 AND event = 'forwarded' THEN 1 ELSE 0 END) as forwarded_12mo,
+    SUM(CASE WHEN timestamp >= ?4 AND event = 'blocked' THEN 1 ELSE 0 END) as blocked_12mo
+  FROM logs
+`).bind(ts7d, ts30d, ts6mo, ts12mo).first();
+
+const e = emailRow as any;
+const emailStats = JSON.stringify({
+  '7d':   { total: e?.total_7d   ?? 0, forwarded: e?.forwarded_7d   ?? 0, blocked: e?.blocked_7d   ?? 0 },
+  '30d':  { total: e?.total_30d  ?? 0, forwarded: e?.forwarded_30d  ?? 0, blocked: e?.blocked_30d  ?? 0 },
+  '6mo':  { total: e?.total_6mo  ?? 0, forwarded: e?.forwarded_6mo  ?? 0, blocked: e?.blocked_6mo  ?? 0 },
+  '12mo': { total: e?.total_12mo ?? 0, forwarded: e?.forwarded_12mo ?? 0, blocked: e?.blocked_12mo ?? 0 },
+  'all':  { total: e?.total_all  ?? 0, forwarded: e?.forwarded_all  ?? 0, blocked: e?.blocked_all  ?? 0 },
+});
 ---
 
 <Layout title={APP_NAME} accentColor={ACCENT_COLOR}>
@@ -97,6 +132,31 @@ const blocked = aliases.filter((a: any) => a.status === 'blocked').length;
     <div class="stat-card">
       <span class="stat-number">{blocked}</span>
       <span class="stat-label">Disabled</span>
+    </div>
+  </div>
+
+  <div class="email-stats-header">
+    <span class="options-label">Email Activity</span>
+    <div class="pills">
+      <button class="pill" data-range="7d">7 Days</button>
+      <button class="pill" data-range="30d">30 Days</button>
+      <button class="pill active" data-range="6mo">6 Months</button>
+      <button class="pill" data-range="12mo">12 Months</button>
+      <button class="pill" data-range="all">All Time</button>
+    </div>
+  </div>
+  <div class="stats-row">
+    <div class="stat-card">
+      <span class="stat-number" id="stat-forwarded">{e?.forwarded_6mo ?? 0}</span>
+      <span class="stat-label">Forwarded</span>
+    </div>
+    <div class="stat-card">
+      <span class="stat-number" id="stat-blocked">{e?.blocked_6mo ?? 0}</span>
+      <span class="stat-label">Blocked</span>
+    </div>
+    <div class="stat-card">
+      <span class="stat-number" id="stat-total">{e?.total_6mo ?? 0}</span>
+      <span class="stat-label">Total Processed</span>
     </div>
   </div>
 
@@ -355,6 +415,18 @@ const blocked = aliases.filter((a: any) => a.status === 'blocked').length;
     display: grid;
     grid-template-columns: repeat(3, 1fr);
     gap: 1rem;
+    margin-bottom: 1rem;
+  }
+
+  .email-stats-header {
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+    margin-bottom: 0.75rem;
+    flex-wrap: wrap;
+  }
+
+  .stats-row:last-of-type {
     margin-bottom: 2rem;
   }
 
@@ -691,6 +763,8 @@ const blocked = aliases.filter((a: any) => a.status === 'blocked').length;
   }
 </style>
 
+<script id="email-stats-data" type="application/json">{emailStats}</script>
+
 <script>
   const userMenu = document.getElementById('user-menu-trigger')?.parentElement;
   const userMenuTrigger = document.getElementById('user-menu-trigger');
@@ -879,4 +953,17 @@ const blocked = aliases.filter((a: any) => a.status === 'blocked').length;
 
   attachToggleListeners();
   attachDeleteListeners();
+
+  const emailStats = JSON.parse(document.getElementById('email-stats-data')?.textContent ?? '{}');
+  document.querySelectorAll('.pill[data-range]').forEach(pill => {
+    pill.addEventListener('click', () => {
+      document.querySelectorAll('.pill[data-range]').forEach(p => p.classList.remove('active'));
+      pill.classList.add('active');
+      const range = pill.dataset.range;
+      const stats = emailStats[range] ?? { total: 0, forwarded: 0, blocked: 0 };
+      document.getElementById('stat-forwarded')!.textContent = stats.forwarded;
+      document.getElementById('stat-blocked')!.textContent = stats.blocked;
+      document.getElementById('stat-total')!.textContent = stats.total;
+    });
+  });
 </script>
