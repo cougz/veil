@@ -75,6 +75,14 @@ const blocked = aliases.filter((a: any) => a.status === 'blocked').length;
       <button class="pill" data-filter="blocked">Blocked <span class="pill-count">{blocked}</span></button>
     </div>
     <input type="text" class="search-input" id="alias-search" placeholder="Search aliases..." />
+    <a href="/api/aliases/export" class="btn-export" download="aliases.csv">
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
+        <polyline points="7 10 12 15 17 10"/>
+        <line x1="12" y1="15" x2="12" y2="3"/>
+      </svg>
+      Export CSV
+    </a>
   </div>
 
   <section class="table-section">
@@ -283,6 +291,28 @@ const blocked = aliases.filter((a: any) => a.status === 'blocked').length;
 
   .search-input::placeholder {
     color: var(--text-muted);
+  }
+
+  .btn-export {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.4rem;
+    padding: 0.5rem 1rem;
+    background: transparent;
+    border: 1px solid var(--border-color);
+    color: var(--text-muted);
+    border-radius: var(--radius-sm);
+    font-size: 0.8rem;
+    font-weight: 500;
+    text-decoration: none;
+    transition: all var(--transition);
+    white-space: nowrap;
+  }
+
+  .btn-export:hover {
+    border-color: var(--accent);
+    color: var(--accent);
+    background: color-mix(in srgb, var(--accent) 10%, transparent);
   }
 
   .options-label {
