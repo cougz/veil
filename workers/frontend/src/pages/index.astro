@@ -763,7 +763,7 @@ const emailStats = JSON.stringify({
   }
 </style>
 
-<script id="email-stats-data" type="application/json">{emailStats}</script>
+<span id="email-stats-data" data-stats={emailStats} hidden></span>
 
 <script>
   const userMenu = document.getElementById('user-menu-trigger')?.parentElement;
@@ -954,7 +954,7 @@ const emailStats = JSON.stringify({
   attachToggleListeners();
   attachDeleteListeners();
 
-  const emailStats = JSON.parse(document.getElementById('email-stats-data')?.textContent ?? '{}');
+  const emailStats = JSON.parse(document.getElementById('email-stats-data')?.dataset.stats ?? '{}');
   document.querySelectorAll('.pill[data-range]').forEach(pill => {
     pill.addEventListener('click', () => {
       document.querySelectorAll('.pill[data-range]').forEach(p => p.classList.remove('active'));
