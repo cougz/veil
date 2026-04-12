@@ -137,12 +137,13 @@ const emailStats = JSON.stringify({
 
   <div class="email-stats-header">
     <span class="options-label">Email Activity</span>
-    <div class="pills">
-      <button class="pill" data-range="7d">7 Days</button>
-      <button class="pill" data-range="30d">30 Days</button>
-      <button class="pill active" data-range="6mo">6 Months</button>
-      <button class="pill" data-range="12mo">12 Months</button>
-      <button class="pill" data-range="all">All Time</button>
+    <div class="seg-group" id="range-group">
+      <div class="seg-indicator"></div>
+      <button class="seg" data-range="7d">7d</button>
+      <button class="seg" data-range="30d">30d</button>
+      <button class="seg active" data-range="6mo">6mo</button>
+      <button class="seg" data-range="12mo">12mo</button>
+      <button class="seg" data-range="all">All</button>
     </div>
   </div>
   <div class="stats-row">
@@ -162,10 +163,11 @@ const emailStats = JSON.stringify({
 
   <div class="options-row">
     <span class="options-label">Filter:</span>
-    <div class="pills">
-      <button class="pill active" data-filter="all">All <span class="pill-count">{total}</span></button>
-      <button class="pill" data-filter="active">Enabled <span class="pill-count">{active}</span></button>
-      <button class="pill" data-filter="blocked">Disabled <span class="pill-count">{blocked}</span></button>
+    <div class="seg-group" id="filter-group">
+      <div class="seg-indicator"></div>
+      <button class="seg active" data-filter="all">All <span class="seg-count">{total}</span></button>
+      <button class="seg" data-filter="active">Enabled <span class="seg-count">{active}</span></button>
+      <button class="seg" data-filter="blocked">Disabled <span class="seg-count">{blocked}</span></button>
     </div>
     <input type="text" class="search-input" id="alias-search" placeholder="Search aliases..." />
     <a href="/api/aliases/export" class="btn-export" download="aliases.csv">
@@ -523,46 +525,55 @@ const emailStats = JSON.stringify({
     font-weight: 500;
   }
 
-  .pills {
-    display: flex;
-    gap: 0.5rem;
-    flex-wrap: wrap;
+  .seg-group {
+    display: inline-flex;
+    background: color-mix(in srgb, var(--text-primary) 5%, transparent);
+    border-radius: var(--radius-md);
+    padding: 3px;
+    position: relative;
+    gap: 0;
   }
 
-  .pill {
-    display: flex;
-    align-items: center;
-    gap: 0.5rem;
-    background: transparent;
-    border: 1px solid var(--border-color);
+  .seg {
+    position: relative;
+    z-index: 1;
+    background: none;
+    border: none;
     color: var(--text-secondary);
-    padding: 0.5rem 1rem;
-    border-radius: 50px;
-    font-size: 0.875rem;
-    transition: all var(--transition);
+    padding: 0.4rem 0.85rem;
+    border-radius: calc(var(--radius-md) - 2px);
+    font-size: 0.8rem;
+    font-weight: 500;
+    cursor: pointer;
+    transition: color 200ms ease;
+    white-space: nowrap;
   }
 
-  .pill:hover {
-    border-color: var(--accent);
-    color: var(--accent);
+  .seg:hover {
+    color: var(--text-primary);
   }
 
-  .pill.active {
-    background: var(--accent);
-    border-color: var(--accent);
-    color: white;
+  .seg.active {
+    color: var(--text-primary);
   }
 
-  .pill-count {
-    background: color-mix(in srgb, var(--text-primary) 20%, transparent);
-    padding: 0.125rem 0.5rem;
-    border-radius: 50px;
-    font-size: 0.75rem;
+  .seg-count {
+    font-size: 0.65rem;
+    opacity: 0.5;
+    margin-left: 2px;
     font-weight: 600;
   }
 
-  .pill.active .pill-count {
-    background: color-mix(in srgb, white 20%, transparent);
+  .seg-indicator {
+    position: absolute;
+    top: 3px;
+    left: 3px;
+    height: calc(100% - 6px);
+    background: color-mix(in srgb, var(--text-primary) 10%, transparent);
+    border-radius: calc(var(--radius-md) - 2px);
+    transition: all 200ms ease;
+    z-index: 0;
+    pointer-events: none;
   }
 
   .table-section {
@@ -817,13 +828,32 @@ const emailStats = JSON.stringify({
     }
   }
 
-  document.querySelectorAll('.pill[data-filter]').forEach(pill => {
-    pill.addEventListener('click', () => {
-      document.querySelectorAll('.pill[data-filter]').forEach(p => p.classList.remove('active'));
-      pill.classList.add('active');
-      currentFilter = pill.dataset.filter;
-      applyFiltersAndSort();
+  function moveIndicator(group: HTMLElement, activeBtn: HTMLElement) {
+    const indicator = group.querySelector('.seg-indicator') as HTMLElement;
+    if (!indicator || !activeBtn) return;
+    indicator.style.width = `${activeBtn.offsetWidth}px`;
+    indicator.style.transform = `translateX(${activeBtn.offsetLeft - 3}px)`;
+  }
+
+  function initSegGroup(groupId: string, onActivate: (btn: HTMLElement) => void) {
+    const group = document.getElementById(groupId);
+    if (!group) return;
+    const btns = group.querySelectorAll<HTMLElement>('.seg');
+    const activeBtn = group.querySelector<HTMLElement>('.seg.active');
+    if (activeBtn) moveIndicator(group, activeBtn);
+    btns.forEach(btn => {
+      btn.addEventListener('click', () => {
+        btns.forEach(b => b.classList.remove('active'));
+        btn.classList.add('active');
+        moveIndicator(group, btn);
+        onActivate(btn);
+      });
     });
+  }
+
+  initSegGroup('filter-group', (btn) => {
+    currentFilter = btn.dataset.filter ?? 'all';
+    applyFiltersAndSort();
   });
 
   const searchInput = document.getElementById('alias-search');
@@ -955,15 +985,11 @@ const emailStats = JSON.stringify({
   attachDeleteListeners();
 
   const emailStats = JSON.parse(document.getElementById('email-stats-data')?.dataset.stats ?? '{}');
-  document.querySelectorAll('.pill[data-range]').forEach(pill => {
-    pill.addEventListener('click', () => {
-      document.querySelectorAll('.pill[data-range]').forEach(p => p.classList.remove('active'));
-      pill.classList.add('active');
-      const range = pill.dataset.range;
-      const stats = emailStats[range] ?? { total: 0, forwarded: 0, blocked: 0 };
-      document.getElementById('stat-forwarded')!.textContent = stats.forwarded;
-      document.getElementById('stat-blocked')!.textContent = stats.blocked;
-      document.getElementById('stat-total')!.textContent = stats.total;
-    });
+  initSegGroup('range-group', (btn) => {
+    const range = btn.dataset.range;
+    const stats = emailStats[range] ?? { total: 0, forwarded: 0, blocked: 0 };
+    document.getElementById('stat-forwarded')!.textContent = stats.forwarded;
+    document.getElementById('stat-blocked')!.textContent = stats.blocked;
+    document.getElementById('stat-total')!.textContent = stats.total;
   });
 </script>
