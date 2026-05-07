@@ -245,7 +245,7 @@ const emailStatsData = {
     </div>
   </div>
 
-  <script is:inline>window.__emailStats = {JSON.stringify(emailStatsData)};</script>
+  <script is:inline set:html={`window.__emailStats = ${JSON.stringify(emailStatsData)};`} />
 </Layout>
 
 <style>
