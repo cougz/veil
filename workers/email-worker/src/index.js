@@ -1,29 +1,3 @@
-const rateLimitMap = new Map();
-const RATE_LIMIT_WINDOW = 60 * 1000;
-const RATE_LIMIT_MAX = 100;
-
-function isRateLimited(key) {
-  const now = Date.now();
-  const entry = rateLimitMap.get(key);
-
-  if (!entry) {
-    rateLimitMap.set(key, { count: 1, windowStart: now });
-    return false;
-  }
-
-  if (now - entry.windowStart > RATE_LIMIT_WINDOW) {
-    rateLimitMap.set(key, { count: 1, windowStart: now });
-    return false;
-  }
-
-  if (entry.count >= RATE_LIMIT_MAX) {
-    return true;
-  }
-
-  entry.count++;
-  return false;
-}
-
 async function getSetting(db, key, envFallback) {
   const row = await db
     .prepare('SELECT value FROM settings WHERE key = ?')
@@ -83,28 +57,28 @@ export default {
 
       if (!forwardTo) {
         console.error('FORWARD_TO not set', { alias, from });
-        await writeLog(env.DB, {
+        ctx.waitUntil(writeLog(env.DB, {
           level: 'error',
           event: 'config_error',
           alias,
           from,
           message: 'FORWARD_TO not configured',
-        });
+        }));
         message.setReject('Server misconfiguration: FORWARD_TO not set');
         return;
       }
 
-      const rateLimitKey = from ?? 'unknown';
-      if (isRateLimited(rateLimitKey)) {
+      const { success: allowed } = await env.RATE_LIMITER.limit({ key: from ?? 'unknown' });
+      if (!allowed) {
         console.warn('Rate limited', { alias, from });
-        await writeLog(env.DB, {
+        ctx.waitUntil(writeLog(env.DB, {
           level: 'warn',
           event: 'rate_limited',
           alias,
           from,
           message: 'Rate limit exceeded',
-          details: { limit: RATE_LIMIT_MAX, window: RATE_LIMIT_WINDOW },
-        });
+          details: { limit: 100, window: 60 },
+        }));
         message.setReject('Rate limit exceeded');
         return;
       }
@@ -116,21 +90,21 @@ export default {
 
       if (row?.status === 'blocked') {
         console.info('Blocked', { alias, from });
-        await writeLog(env.DB, {
+        ctx.waitUntil(writeLog(env.DB, {
           level: 'info',
           event: 'blocked',
           alias,
           from,
           to: forwardTo,
           message: rejectMessage,
-        });
+        }));
         message.setReject(rejectMessage);
         return;
       }
 
       if (row?.expires_at && row.expires_at < now) {
         console.info('Expired', { alias, from, expiredAt: row.expires_at });
-        await writeLog(env.DB, {
+        ctx.waitUntil(writeLog(env.DB, {
           level: 'info',
           event: 'expired',
           alias,
@@ -138,7 +112,7 @@ export default {
           to: forwardTo,
           message: rejectMessage,
           details: { expiredAt: row.expires_at },
-        });
+        }));
         message.setReject(rejectMessage);
         return;
       }
@@ -166,14 +140,15 @@ export default {
 
       await message.forward(forwardTo);
       console.info('Forwarded', { alias, from, to: forwardTo });
-      await writeLog(env.DB, {
+
+      ctx.waitUntil(writeLog(env.DB, {
         level: 'info',
         event: 'forwarded',
         alias,
         from,
         to: forwardTo,
         message: 'Email forwarded successfully',
-      });
+      }));
     } catch (error) {
       console.error('Forwarding failed', {
         alias,
@@ -182,7 +157,7 @@ export default {
         error: error.message,
         stack: error.stack,
       });
-      await writeLog(env.DB, {
+      ctx.waitUntil(writeLog(env.DB, {
         level: 'error',
         event: 'error',
         alias,
@@ -190,7 +165,7 @@ export default {
         to: forwardTo,
         message: error.message,
         details: { stack: error.stack },
-      });
+      }));
       message.setReject(getRejectionMessage(error));
     }
   },
