@@ -244,6 +244,8 @@ const emailStats = JSON.stringify({
       </div>
     </div>
   </div>
+
+  <span id="email-stats-data" data-stats={emailStats} hidden></span>
 </Layout>
 
 <style>
@@ -823,8 +825,6 @@ const emailStats = JSON.stringify({
     }
   }
 </style>
-
-<span id="email-stats-data" data-stats={emailStats} hidden></span>
 
 <script>
   async function apiFetch(path, method = 'GET', body = null) {
