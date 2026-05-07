@@ -27,11 +27,11 @@ const total   = aliases.length;
 const active  = aliases.filter((a: any) => a.status === 'active').length;
 const blocked = aliases.filter((a: any) => a.status === 'blocked').length;
 
-const now = Math.floor(Date.now() / 1000);
-const ts7d  = now - 7 * 86400;
-const ts30d = now - 30 * 86400;
-const ts6mo = now - 180 * 86400;
-const ts12mo = now - 365 * 86400;
+const now = Date.now();
+const ts7d  = now - 7 * 86400000;
+const ts30d = now - 30 * 86400000;
+const ts6mo = now - 180 * 86400000;
+const ts12mo = now - 365 * 86400000;
 
 const emailRow = await db.prepare(`
   SELECT
@@ -104,7 +104,7 @@ const emailStatsData = {
 
   <div class="email-stats-header">
     <span class="options-label">Email Activity</span>
-    <div class="seg-group" id="range-group">
+    <div class="seg-group" id="range-group" data-stats={JSON.stringify(emailStatsData)}>
       <div class="seg-indicator"></div>
       <button class="seg" data-range="7d">7d</button>
       <button class="seg" data-range="30d">30d</button>
@@ -245,7 +245,6 @@ const emailStatsData = {
     </div>
   </div>
 
-  <script is:inline set:html={`window.__emailStats = ${JSON.stringify(emailStatsData)};`} />
 </Layout>
 
 <style>
@@ -827,7 +826,7 @@ const emailStatsData = {
 </style>
 
 <script>
-  const emailStats = (window as any).__emailStats ?? {};
+  const emailStats = JSON.parse(document.getElementById('range-group')?.dataset.stats ?? '{}');
 
   async function apiFetch(path, method = 'GET', body = null) {
     const opts = {
