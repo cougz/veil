@@ -967,7 +967,7 @@ const emailStats = JSON.stringify({
       badge.textContent = newStatus === 'active' ? 'Enabled' : 'Disabled';
     } else {
       btn.textContent = currentStatus === 'active' ? 'Disable' : 'Enable';
-      alert('Failed to update alias.');
+      window.showToast('Failed to update alias.', 'error');
     }
     btn.disabled = false;
   }
@@ -982,7 +982,19 @@ const emailStats = JSON.stringify({
   async function handleDelete(e) {
     const btn = e.currentTarget;
     const address = btn.dataset.address;
-    if (!confirm(`Delete ${address}? This cannot be undone.`)) return;
+
+    if (!btn.dataset.confirming) {
+      btn.textContent = 'Confirm?';
+      btn.dataset.confirming = 'true';
+      setTimeout(() => {
+        if (btn.dataset.confirming) {
+          btn.textContent = 'Delete';
+          delete btn.dataset.confirming;
+        }
+      }, 3000);
+      return;
+    }
+    delete btn.dataset.confirming;
 
     btn.disabled = true;
     const res = await apiFetch(
@@ -992,8 +1004,9 @@ const emailStats = JSON.stringify({
 
     if (res.ok) {
       document.querySelector(`tr[data-address="${address}"]`)?.remove();
+      window.showToast(`Alias ${address} deleted.`, 'success');
     } else {
-      alert('Failed to delete alias.');
+      window.showToast('Failed to delete alias.', 'error');
       btn.disabled = false;
     }
   }

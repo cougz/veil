@@ -34,6 +34,7 @@ const { title = 'Veil', accentColor = '#6d83f2' } = Astro.props;
   <div class="dot dot-10"></div>
   
   <main class="main-content">
+    <div id="toast-container" aria-live="polite" aria-atomic="true"></div>
     <slot />
   </main>
   
@@ -369,4 +370,54 @@ const { title = 'Veil', accentColor = '#6d83f2' } = Astro.props;
     background: var(--border-color);
     margin: 0.25rem 0.5rem;
   }
+
+  #toast-container {
+    position: fixed;
+    bottom: 1.5rem;
+    right: 1.5rem;
+    z-index: 9000;
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+    pointer-events: none;
+  }
+  .toast {
+    display: flex;
+    align-items: center;
+    gap: 0.6rem;
+    padding: 0.75rem 1rem;
+    background: var(--bg-secondary);
+    border: 1px solid var(--border-color);
+    border-radius: var(--radius-md);
+    font-size: 0.875rem;
+    color: var(--text-primary);
+    box-shadow: 0 4px 16px rgba(0,0,0,0.3);
+    pointer-events: auto;
+    animation: slideIn 0.2s ease;
+    max-width: 320px;
+  }
+  .toast.success { border-color: #22c55e; color: #4ade80; }
+  .toast.error   { border-color: #ef4444; color: #f87171; }
+  @keyframes slideIn {
+    from { opacity: 0; transform: translateY(8px); }
+    to   { opacity: 1; transform: translateY(0); }
+  }
 </style>
+
+<script is:inline>
+  window.showToast = function(message, type, duration) {
+    type = type || 'info';
+    duration = duration || 3500;
+    var container = document.getElementById('toast-container');
+    if (!container) return;
+    var toast = document.createElement('div');
+    toast.className = 'toast ' + type;
+    toast.textContent = message;
+    container.appendChild(toast);
+    setTimeout(function() {
+      toast.style.opacity = '0';
+      toast.style.transition = 'opacity 0.2s';
+      setTimeout(function() { toast.remove(); }, 200);
+    }, duration);
+  };
+</script>

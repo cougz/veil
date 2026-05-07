@@ -592,10 +592,10 @@ const errorCount = (countResult as any)?.error_count ?? 0;
       if (res.ok) {
         window.location.reload();
       } else {
-        alert('Failed to clear logs.');
+        window.showToast('Failed to clear logs.', 'error');
       }
     } catch {
-      alert('Network error.');
+      window.showToast('Network error — please try again.', 'error');
     } finally {
       clearBtn.removeAttribute('disabled');
     }
