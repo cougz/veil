@@ -169,4 +169,25 @@ export default {
       message.setReject(getRejectionMessage(error));
     }
   },
+
+  async scheduled(event, env, ctx) {
+    ctx.waitUntil(pruneOldLogs(env.DB));
+  },
 };
+
+async function pruneOldLogs(db) {
+  try {
+    const retentionRow = await db
+      .prepare("SELECT value FROM settings WHERE key = 'log_retention_days'")
+      .first();
+    const days = parseInt(retentionRow?.value ?? '90', 10);
+    const cutoff = Date.now() - days * 86400 * 1000;
+    const result = await db
+      .prepare('DELETE FROM logs WHERE timestamp < ?')
+      .bind(cutoff)
+      .run();
+    console.info('Log pruning complete', { deletedRows: result.meta.changes, retentionDays: days });
+  } catch (err) {
+    console.error('Log pruning failed', { error: err.message });
+  }
+}
