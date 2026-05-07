@@ -139,6 +139,14 @@ const emailStats = JSON.stringify({
       <button class="seg" data-filter="blocked">Disabled <span class="seg-count">{blocked}</span></button>
     </div>
     <input type="text" class="search-input" id="alias-search" placeholder="Search aliases..." />
+    <button class="btn-new-alias" id="btn-new-alias">
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+        stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <line x1="12" y1="5" x2="12" y2="19"/>
+        <line x1="5" y1="12" x2="19" y2="12"/>
+      </svg>
+      New alias
+    </button>
     <a href="/api/aliases/export" class="btn-export" download="aliases.csv">
       <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
         <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
@@ -158,19 +166,25 @@ const emailStats = JSON.stringify({
             <th class="sortable" data-sort="first_seen">First Seen <span class="sort-indicator"></span></th>
             <th class="sortable" data-sort="last_seen">Last Seen <span class="sort-indicator"></span></th>
             <th class="sortable" data-sort="mail_count">Mails <span class="sort-indicator"></span></th>
+            <th class="sortable" data-sort="expires_at">Expires <span class="sort-indicator"></span></th>
             <th class="sortable" data-sort="status">Status <span class="sort-indicator"></span></th>
             <th>Actions</th>
           </tr>
         </thead>
         <tbody id="alias-tbody">
           {aliases.map((alias: any) => (
-            <tr data-address={alias.address} data-status={alias.status} data-first-seen={alias.first_seen} data-last-seen={alias.last_seen} data-mail-count={alias.mail_count} class="alias-row">
+            <tr data-address={alias.address} data-status={alias.status} data-first-seen={alias.first_seen} data-last-seen={alias.last_seen} data-mail-count={alias.mail_count} data-expires-at={alias.expires_at ?? ''} class="alias-row">
               <td class="alias-address">
                 <code>{alias.address}</code>
               </td>
               <td class="alias-date">{formatDate(alias.first_seen)}</td>
               <td class="alias-date">{formatDate(alias.last_seen)}</td>
               <td class="alias-count">{alias.mail_count}</td>
+              <td class="alias-date">
+                {alias.expires_at
+                  ? formatDate(alias.expires_at)
+                  : <span style="color: var(--text-muted); font-size: 0.8rem;">Never</span>}
+              </td>
               <td>
                 <span class={`badge ${alias.status === 'active' ? 'badge-active' : 'badge-blocked'}`}>
                   {alias.status === 'active' ? 'Enabled' : 'Disabled'}
@@ -195,6 +209,34 @@ const emailStats = JSON.stringify({
       )}
     </div>
   </section>
+
+  <div class="modal-overlay" id="alias-modal-overlay" aria-hidden="true" data-domain={DOMAIN}>
+    <div class="modal" role="dialog" aria-modal="true" aria-labelledby="modal-title">
+      <div class="modal-header">
+        <h2 id="modal-title">New alias</h2>
+        <button class="modal-close" id="alias-modal-close" aria-label="Close">&times;</button>
+      </div>
+      <div class="modal-body">
+        <div class="form-group">
+          <label for="new-alias-address">Address</label>
+          <div class="input-suffix-wrap">
+            <input type="text" id="new-alias-local" placeholder="anything" autocomplete="off" />
+            <span class="input-suffix">@{DOMAIN}</span>
+          </div>
+        </div>
+        <div class="form-group">
+          <label for="new-alias-expires">Expires (optional)</label>
+          <input type="date" id="new-alias-expires" />
+          <p class="form-hint">Leave blank for a permanent alias.</p>
+        </div>
+        <div class="modal-error" id="alias-modal-error" hidden></div>
+      </div>
+      <div class="modal-footer">
+        <button class="btn-secondary" id="alias-modal-cancel">Cancel</button>
+        <button class="btn-primary-sm" id="alias-modal-submit">Create alias</button>
+      </div>
+    </div>
+  </div>
 </Layout>
 
 <style>
@@ -367,6 +409,148 @@ const emailStats = JSON.stringify({
     color: var(--accent);
     background: color-mix(in srgb, var(--accent) 10%, transparent);
   }
+
+  .btn-new-alias {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.4rem;
+    padding: 0.5rem 1rem;
+    background: var(--accent);
+    border: none;
+    color: white;
+    border-radius: var(--radius-sm);
+    font-size: 0.8rem;
+    font-weight: 500;
+    transition: all var(--transition);
+    white-space: nowrap;
+    cursor: pointer;
+  }
+  .btn-new-alias:hover { background: var(--accent-dark); }
+
+  .modal-overlay {
+    display: none;
+    position: fixed;
+    inset: 0;
+    background: rgba(0, 0, 0, 0.6);
+    z-index: 2000;
+    align-items: center;
+    justify-content: center;
+  }
+  .modal-overlay.visible { display: flex; }
+  .modal {
+    background: var(--bg-secondary);
+    border: 1px solid var(--border-color);
+    border-radius: var(--radius-lg);
+    width: 440px;
+    max-width: 95vw;
+  }
+  .modal-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 1.25rem 1.5rem;
+    border-bottom: 1px solid var(--border-color);
+  }
+  .modal-header h2 {
+    font-size: 1rem;
+    font-weight: 600;
+    color: var(--text-primary);
+  }
+  .modal-close {
+    background: none;
+    border: none;
+    color: var(--text-muted);
+    font-size: 1.4rem;
+    cursor: pointer;
+    line-height: 1;
+    padding: 0 0.2rem;
+  }
+  .modal-body { padding: 1.25rem 1.5rem; }
+  .modal-footer {
+    display: flex;
+    justify-content: flex-end;
+    gap: 0.75rem;
+    padding: 1rem 1.5rem;
+    border-top: 1px solid var(--border-color);
+  }
+  .form-group { margin-bottom: 1.25rem; }
+  .form-group label {
+    display: block;
+    font-weight: 500;
+    font-size: 0.875rem;
+    color: var(--text-primary);
+    margin-bottom: 0.4rem;
+  }
+  .form-hint {
+    color: var(--text-muted);
+    font-size: 0.8rem;
+    margin-top: 0.35rem;
+  }
+  .input-suffix-wrap {
+    display: flex;
+    align-items: center;
+    border: 1px solid var(--border-color);
+    border-radius: var(--radius-sm);
+    background: var(--bg-primary);
+    overflow: hidden;
+  }
+  .input-suffix-wrap input {
+    flex: 1;
+    border: none;
+    background: transparent;
+    padding: 0.6rem 0.75rem;
+    color: var(--text-primary);
+    font-size: 0.9rem;
+  }
+  .input-suffix {
+    padding: 0.6rem 0.75rem;
+    color: var(--text-muted);
+    font-size: 0.85rem;
+    background: var(--bg-tertiary);
+    border-left: 1px solid var(--border-color);
+    white-space: nowrap;
+  }
+  #new-alias-expires {
+    width: 100%;
+    padding: 0.6rem 0.75rem;
+    background: var(--bg-primary);
+    border: 1px solid var(--border-color);
+    border-radius: var(--radius-sm);
+    color: var(--text-primary);
+    font-size: 0.9rem;
+  }
+  .modal-error {
+    color: #f87171;
+    font-size: 0.85rem;
+    margin-top: 0.5rem;
+    padding: 0.5rem 0.75rem;
+    background: color-mix(in srgb, #ef4444 10%, transparent);
+    border-radius: var(--radius-sm);
+  }
+  .btn-secondary {
+    background: transparent;
+    border: 1px solid var(--border-color);
+    color: var(--text-secondary);
+    padding: 0.5rem 1rem;
+    border-radius: var(--radius-sm);
+    font-size: 0.875rem;
+    cursor: pointer;
+    transition: all var(--transition);
+  }
+  .btn-secondary:hover { border-color: var(--accent); color: var(--accent); }
+  .btn-primary-sm {
+    background: var(--accent);
+    border: none;
+    color: white;
+    padding: 0.5rem 1.25rem;
+    border-radius: var(--radius-sm);
+    font-size: 0.875rem;
+    font-weight: 500;
+    cursor: pointer;
+    transition: all var(--transition);
+  }
+  .btn-primary-sm:hover:not(:disabled) { background: var(--accent-dark); }
+  .btn-primary-sm:disabled { opacity: 0.5; cursor: not-allowed; }
 
   .options-label {
     color: var(--text-muted);
@@ -718,6 +902,10 @@ const emailStats = JSON.stringify({
           valA = a.dataset.status;
           valB = b.dataset.status;
           break;
+        case 'expires_at':
+          valA = parseInt(a.dataset.expiresAt || '0', 10);
+          valB = parseInt(b.dataset.expiresAt || '0', 10);
+          break;
         default:
           return 0;
       }
@@ -812,6 +1000,66 @@ const emailStats = JSON.stringify({
 
   attachToggleListeners();
   attachDeleteListeners();
+
+  const overlay = document.getElementById('alias-modal-overlay');
+  const modalClose = document.getElementById('alias-modal-close');
+  const modalCancel = document.getElementById('alias-modal-cancel');
+  const modalSubmit = document.getElementById('alias-modal-submit');
+  const localInput = document.getElementById('new-alias-local');
+  const expiresInput = document.getElementById('new-alias-expires');
+  const modalError = document.getElementById('alias-modal-error');
+
+  document.getElementById('btn-new-alias')?.addEventListener('click', () => {
+    overlay?.classList.add('visible');
+    overlay?.removeAttribute('aria-hidden');
+    localInput?.focus();
+  });
+
+  function closeModal() {
+    overlay?.classList.remove('visible');
+    overlay?.setAttribute('aria-hidden', 'true');
+    if (localInput) (localInput as HTMLInputElement).value = '';
+    if (expiresInput) (expiresInput as HTMLInputElement).value = '';
+    if (modalError) { modalError.hidden = true; modalError.textContent = ''; }
+  }
+
+  modalClose?.addEventListener('click', closeModal);
+  modalCancel?.addEventListener('click', closeModal);
+  overlay?.addEventListener('click', (e) => { if (e.target === overlay) closeModal(); });
+  document.addEventListener('keydown', (e) => { if (e.key === 'Escape') closeModal(); });
+
+  modalSubmit?.addEventListener('click', async () => {
+    const local = (localInput as HTMLInputElement).value.trim();
+    const expires = (expiresInput as HTMLInputElement).value;
+    const domain = document.getElementById('alias-modal-overlay')?.dataset.domain
+      ?? window.location.hostname;
+
+    if (!local) {
+      if (modalError) { modalError.textContent = 'Address is required.'; modalError.hidden = false; }
+      return;
+    }
+
+    const address = `${local}@${domain}`;
+    const body: Record<string, unknown> = { address };
+    if (expires) body.expires_at = Math.floor(new Date(expires).getTime() / 1000);
+
+    (modalSubmit as HTMLButtonElement).disabled = true;
+    if (modalError) modalError.hidden = true;
+
+    const res = await apiFetch('/api/aliases', 'POST', body);
+    const data = await res.json();
+
+    if (res.ok) {
+      closeModal();
+      window.location.reload();
+    } else {
+      if (modalError) {
+        modalError.textContent = data.error ?? 'Failed to create alias.';
+        modalError.hidden = false;
+      }
+      (modalSubmit as HTMLButtonElement).disabled = false;
+    }
+  });
 
   const emailStats = JSON.parse(document.getElementById('email-stats-data')?.dataset.stats ?? '{}');
   initSegGroup('range-group', (btn) => {
