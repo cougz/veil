@@ -16,7 +16,7 @@ export const onRequest: MiddlewareHandler = async (context, next) => {
       "font-src 'self' https://fonts.gstatic.com",
       "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com",
       "script-src 'self' 'unsafe-inline' https://static.cloudflareinsights.com",
-      "connect-src 'self'",
+      "connect-src 'self' https://static.cloudflareinsights.com",
       "img-src 'self' data:",
       "frame-ancestors 'none'",
       "base-uri 'self'",

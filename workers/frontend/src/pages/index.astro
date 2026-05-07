@@ -245,7 +245,7 @@ const emailStatsData = {
     </div>
   </div>
 
-  <script id="email-stats-json" type="application/json" set:html={JSON.stringify(emailStatsData)} />
+  <script is:inline>window.__emailStats = {JSON.stringify(emailStatsData)};</script>
 </Layout>
 
 <style>
@@ -827,7 +827,7 @@ const emailStatsData = {
 </style>
 
 <script>
-  const emailStats = JSON.parse(document.getElementById('email-stats-json')?.textContent ?? '{}');
+  const emailStats = (window as any).__emailStats ?? {};
 
   async function apiFetch(path, method = 'GET', body = null) {
     const opts = {
