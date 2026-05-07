@@ -28,6 +28,8 @@ const settings: Record<string, string | null> = {
 for (const row of settingsRows as { key: string; value: string }[]) {
   settings[row.key] = row.value;
 }
+
+const retentionDays = settings['log_retention_days'] ?? '90';
 ---
 
 <Layout title={`Settings | ${APP_NAME}`} accentColor={ACCENT_COLOR}>
@@ -83,6 +85,48 @@ for (const row of settingsRows as { key: string; value: string }[]) {
 
 <div class="info-box">
   <strong>Note:</strong> Settings stored here take precedence over environment variables. Set forwarding address to save email forwarding. Leave reject message empty to use the environment variable default (if set).
+</div>
+
+<div class="settings-section">
+  <h2>Log management</h2>
+  <p class="settings-subtitle">Email activity logs are kept for the configured number of days.</p>
+
+  <div class="settings-form" style="margin-top: 1rem;">
+    <div class="form-group">
+      <label for="log_retention_days">Retention period (days)</label>
+      <p class="form-hint">Logs older than this are automatically deleted each night at 2 AM UTC.</p>
+      <input
+        type="number"
+        id="log_retention_days"
+        name="log_retention_days"
+        min="1"
+        max="3650"
+        value={retentionDays}
+      />
+    </div>
+    <div class="form-actions">
+      <button type="button" class="btn-primary" id="save-retention-btn">Save</button>
+      <div class="save-status" id="retention-status"></div>
+    </div>
+  </div>
+
+  <div class="danger-zone">
+    <h3>Clear logs</h3>
+    <div class="danger-row">
+      <div>
+        <strong>Delete logs older than 30 days</strong>
+        <p class="form-hint">Permanently removes log entries more than 30 days old.</p>
+      </div>
+      <button type="button" class="btn-danger-outline" id="clear-30d-btn">Clear 30d+</button>
+    </div>
+    <div class="danger-row">
+      <div>
+        <strong>Delete all logs</strong>
+        <p class="form-hint">Permanently removes every log entry.</p>
+      </div>
+      <button type="button" class="btn-danger-outline" id="clear-all-btn">Clear all</button>
+    </div>
+  </div>
 </div>
 </Layout>
 
@@ -250,6 +294,73 @@ for (const row of settingsRows as { key: string; value: string }[]) {
     align-items: center;
     margin-bottom: 1rem;
   }
+
+  .settings-section {
+    margin-top: 2rem;
+  }
+
+  .settings-section h2 {
+    font-size: 1.5rem;
+    font-weight: 700;
+    color: var(--text-primary);
+    margin-bottom: 0.5rem;
+    background: linear-gradient(135deg, #ffffff 0%, var(--accent) 100%);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+  }
+
+  .danger-zone {
+    margin-top: 2rem;
+    border: 1px solid color-mix(in srgb, #ef4444 30%, var(--border-color));
+    border-radius: var(--radius-lg);
+    padding: 1.5rem;
+  }
+
+  .danger-zone h3 {
+    font-size: 1rem;
+    font-weight: 600;
+    color: #f87171;
+    margin-bottom: 1rem;
+  }
+
+  .danger-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 1rem 0;
+    border-top: 1px solid var(--border-color);
+  }
+
+  .danger-row:first-of-type {
+    border-top: none;
+  }
+
+  .danger-row strong {
+    color: var(--text-primary);
+    font-size: 0.9rem;
+  }
+
+  .btn-danger-outline {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.4rem;
+    padding: 0.5rem 1rem;
+    background: transparent;
+    border: 1px solid color-mix(in srgb, #ef4444 40%, var(--border-color));
+    color: #f87171;
+    border-radius: var(--radius-sm);
+    font-size: 0.8rem;
+    font-weight: 500;
+    transition: all var(--transition);
+    white-space: nowrap;
+    cursor: pointer;
+  }
+
+  .btn-danger-outline:hover {
+    border-color: #ef4444;
+    background: color-mix(in srgb, #ef4444 10%, transparent);
+  }
 </style>
 
 <script>
@@ -301,5 +412,52 @@ for (const row of settingsRows as { key: string; value: string }[]) {
       saveSpinner.style.display = 'none'
       saveLabel.textContent = 'Save Settings'
     }
+  });
+
+  document.getElementById('save-retention-btn')?.addEventListener('click', async () => {
+    const days = (document.getElementById('log_retention_days') as HTMLInputElement).value;
+    const status = document.getElementById('retention-status')!;
+    const res = await fetch('/api/settings', {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ log_retention_days: days }),
+    });
+    status.textContent = res.ok ? 'Saved.' : 'Failed to save.';
+    status.className = `save-status ${res.ok ? 'success' : 'error'}`;
+  });
+
+  async function clearLogs(before?: number) {
+    const url = before ? `/api/logs?before=${before}` : '/api/logs';
+    const res = await fetch(url, { method: 'DELETE' });
+    return res.ok;
+  }
+
+  document.getElementById('clear-30d-btn')?.addEventListener('click', async (e) => {
+    const btn = e.currentTarget as HTMLButtonElement;
+    if (btn.dataset.confirming !== 'true') {
+      btn.textContent = 'Confirm?';
+      btn.dataset.confirming = 'true';
+      setTimeout(() => { btn.textContent = 'Clear 30d+'; delete btn.dataset.confirming; }, 3000);
+      return;
+    }
+    btn.disabled = true;
+    const cutoff = Date.now() - 30 * 86400 * 1000;
+    await clearLogs(cutoff);
+    btn.textContent = 'Done';
+    setTimeout(() => { btn.textContent = 'Clear 30d+'; btn.disabled = false; }, 2000);
+  });
+
+  document.getElementById('clear-all-btn')?.addEventListener('click', async (e) => {
+    const btn = e.currentTarget as HTMLButtonElement;
+    if (btn.dataset.confirming !== 'true') {
+      btn.textContent = 'Confirm?';
+      btn.dataset.confirming = 'true';
+      setTimeout(() => { btn.textContent = 'Clear all'; delete btn.dataset.confirming; }, 3000);
+      return;
+    }
+    btn.disabled = true;
+    await clearLogs();
+    btn.textContent = 'Done';
+    setTimeout(() => { btn.textContent = 'Clear all'; btn.disabled = false; }, 2000);
   });
 </script>

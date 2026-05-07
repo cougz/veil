@@ -2,7 +2,7 @@ import type { APIRoute } from 'astro';
 import { unauthorized, json } from '../../lib/api';
 import { verifyAccessToken } from '../../lib/auth';
 
-const VALID_KEYS = ['forward_to', 'reject_message'];
+const VALID_KEYS = ['forward_to', 'reject_message', 'log_retention_days'];
 
 const EMAIL_REGEX = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
@@ -67,6 +67,12 @@ export const PUT: APIRoute = async ({ locals, request }) => {
         const value = bodyAny[key].trim();
         if (key === 'forward_to' && value !== '' && !isValidEmail(value)) {
           return json({ error: 'Invalid email address format' }, 400);
+        }
+        if (key === 'log_retention_days') {
+          const n = parseInt(value, 10);
+          if (isNaN(n) || n < 1 || n > 3650) {
+            return json({ error: 'Retention must be between 1 and 3650 days' }, 400);
+          }
         }
         updates.push({ key, value });
       }
