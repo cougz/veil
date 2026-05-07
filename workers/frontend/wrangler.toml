@@ -12,6 +12,7 @@ enabled = true
 binding = "DB"
 database_name = "veil-db"
 database_id = "17141d5e-9cbc-4dce-ab8e-313c5ef96960"
+migrations_dir = "../../migrations"
 
 # Set these as Secrets in the Cloudflare dashboard (Workers → Settings → Variables and Secrets):
 # CF_ACCESS_TEAM_DOMAIN = "https://yourteam.cloudflareaccess.com"

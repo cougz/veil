@@ -2,28 +2,17 @@
 
 If you encounter issues with settings not being saved, you may need to initialize the D1 database schema.
 
-## Quick Fix
+## Applying schema
 
-Run the initialization script:
-
-```bash
-./init-db.sh
-```
-
-## Manual Initialization
-
-If the script doesn't work, you can manually apply the schema:
+Run once after cloning, and again whenever new migrations are added:
 
 ```bash
-# Apply the schema to your D1 database
-npx wrangler d1 execute veil-db --remote --file=./schema.sql
-
-# Verify the tables were created
-npx wrangler d1 execute veil-db --remote --command="SELECT name FROM sqlite_master WHERE type='table' ORDER BY name;"
-
-# Check the settings table structure
-npx wrangler d1 execute veil-db --remote --command="PRAGMA table_info(settings);"
+npx wrangler d1 migrations apply veil-db --remote
 ```
+
+Wrangler tracks which migrations have run in a `d1_migrations` table and only
+applies new ones. Never edit existing migration files — add a new numbered file
+instead.
 
 ## Troubleshooting
 
@@ -34,7 +23,7 @@ npx wrangler d1 execute veil-db --remote --command="PRAGMA table_info(settings);
    npx wrangler d1 execute veil-db --remote --command="SELECT name FROM sqlite_master WHERE type='table' AND name='settings';"
    ```
 
-2. If it doesn't exist, run the initialization script above.
+2. If it doesn't exist, run the migrations above.
 
 3. Check the browser console for errors when saving settings.
 
@@ -58,4 +47,5 @@ Verify the database ID in `workers/frontend/wrangler.toml` matches your actual D
 binding = "DB"
 database_name = "veil-db"
 database_id = "your-database-id-here"
+migrations_dir = "../../migrations"
 ```

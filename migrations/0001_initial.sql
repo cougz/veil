@@ -1,6 +1,3 @@
--- Reference only. Actual applied migrations are in the migrations/ directory.
--- Run: npx wrangler d1 migrations apply veil-db --remote
-
 CREATE TABLE IF NOT EXISTS aliases (
   address    TEXT PRIMARY KEY,
   status     TEXT NOT NULL DEFAULT 'active',
