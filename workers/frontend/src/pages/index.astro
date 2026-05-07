@@ -197,6 +197,13 @@ const emailStats = JSON.stringify({
                 <button class="btn-sm btn-delete btn-danger" data-address={alias.address}>
                   Delete
                 </button>
+                <a
+                  class="btn-sm btn-logs"
+                  href={`/logs?search=${encodeURIComponent(alias.address)}`}
+                  title="View logs for this alias"
+                >
+                  Logs
+                </a>
               </td>
             </tr>
           ))}
@@ -760,6 +767,16 @@ const emailStats = JSON.stringify({
     border-color: #ef4444;
     color: #f87171;
     background: color-mix(in srgb, #ef4444 10%, transparent);
+  }
+
+  .btn-logs {
+    text-decoration: none;
+    text-align: center;
+  }
+  .btn-logs:hover:not(:disabled) {
+    border-color: var(--accent);
+    color: var(--accent);
+    background: color-mix(in srgb, var(--accent) 10%, transparent);
   }
 
   .empty-state {
