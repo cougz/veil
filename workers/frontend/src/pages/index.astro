@@ -54,13 +54,13 @@ const emailRow = await db.prepare(`
 `).bind(ts7d, ts30d, ts6mo, ts12mo).first();
 
 const e = emailRow as any;
-const emailStats = JSON.stringify({
+const emailStatsData = {
   '7d':   { total: e?.total_7d   ?? 0, forwarded: e?.forwarded_7d   ?? 0, blocked: e?.blocked_7d   ?? 0 },
   '30d':  { total: e?.total_30d  ?? 0, forwarded: e?.forwarded_30d  ?? 0, blocked: e?.blocked_30d  ?? 0 },
   '6mo':  { total: e?.total_6mo  ?? 0, forwarded: e?.forwarded_6mo  ?? 0, blocked: e?.blocked_6mo  ?? 0 },
   '12mo': { total: e?.total_12mo ?? 0, forwarded: e?.forwarded_12mo ?? 0, blocked: e?.blocked_12mo ?? 0 },
   'all':  { total: e?.total_all  ?? 0, forwarded: e?.forwarded_all  ?? 0, blocked: e?.blocked_all  ?? 0 },
-});
+};
 ---
 
 <Layout title={APP_NAME} accentColor={ACCENT_COLOR}>
@@ -245,7 +245,6 @@ const emailStats = JSON.stringify({
     </div>
   </div>
 
-  <span id="email-stats-data" data-stats={emailStats} hidden></span>
 </Layout>
 
 <style>
@@ -826,7 +825,7 @@ const emailStats = JSON.stringify({
   }
 </style>
 
-<script>
+<script define:vars={{ emailStats: emailStatsData }}>
   async function apiFetch(path, method = 'GET', body = null) {
     const opts = {
       method,
@@ -1091,7 +1090,6 @@ const emailStats = JSON.stringify({
     }
   });
 
-  const emailStats = JSON.parse(document.getElementById('email-stats-data')?.dataset.stats ?? '{}');
   initSegGroup('range-group', (btn) => {
     const range = btn.dataset.range;
     const stats = emailStats[range] ?? { total: 0, forwarded: 0, blocked: 0 };
